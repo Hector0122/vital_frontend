@@ -4,6 +4,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Recuerdos } from '../components/Recuerdos';
 import { RegistroItem } from '../components/RegistroItem';
 import { Screen } from '../components/Screen';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
@@ -113,6 +114,12 @@ export function SemanaScreen({ navigation }: Props) {
         <View style={styles.fraseCard}>
           <Text style={styles.frase}>{frase}</Text>
         </View>
+
+        <Recuerdos
+          registros={dias.flatMap((d) => porDia[d])}
+          actividades={actividades}
+          onAbrir={(registroId) => navigation.navigate('Registro', { registroId })}
+        />
 
         {revision && (
           <View style={styles.card}>
