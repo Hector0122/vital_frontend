@@ -1,3 +1,4 @@
+import { pendientes } from '../src/services/nube';
 import { fotosEnUso, useDataStore } from '../src/stores/dataStore';
 import { armarRespaldo, leerRespaldo } from '../src/services/backup';
 
@@ -34,4 +35,9 @@ test('el respaldo ida y vuelta conserva los datos; un archivo ajeno se rechaza',
   expect(r.fotos['a.jpg']).toBe('AAA');
   expect(() => leerRespaldo('{"hola":1}')).toThrow('no es un respaldo');
   expect(() => leerRespaldo('no json')).toThrow();
+});
+
+test('pendientes de la nube: sube lo nuevo y borra lo que ya no se usa', () => {
+  expect(pendientes(new Set(['a.jpg', 'b.jpg']), ['b.jpg', 'c.jpg'])).toEqual({ subir: ['a.jpg'], borrar: ['c.jpg'] });
+  expect(pendientes(new Set(), [])).toEqual({ subir: [], borrar: [] });
 });

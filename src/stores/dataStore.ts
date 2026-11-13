@@ -20,6 +20,7 @@ export interface Actividad {
   nombre: string;
   icono: string;
   activo: boolean;
+  metaSemanal?: number; // intención flexible ("3 veces por semana"); con meta aparece en el widget
 }
 
 export interface Registro {
@@ -49,9 +50,13 @@ interface DataState extends Datos {
   guardarActividad: (actividad: Omit<Actividad, 'id'> & { id?: string }) => void;
   moverArea: (id: string, delta: -1 | 1) => void;
   reemplazarTodo: (datos: Datos) => void;
+  alternarDia: (actividadId: string, fecha: string) => void;
 }
 
 export const nuevoId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+
+/** Registro sin duración, nota, sensación ni fotos: se puede quitar sin perder nada. */
+export const esSimple = (r: Registro) => !r.duracionMin && !r.nota && !r.sensacion && !r.fotos?.length;
 
 const SEED: [string, string, [string, string][]][] = [
   ['Bienestar', 'leaf', [['Ejercicio', 'run'], ['Caminata', 'walk'], ['Comer con calma', 'food-apple-outline']]],
@@ -71,6 +76,9 @@ export function datosIniciales(): Datos {
   });
   return { areas, actividades, registros: [] };
 }
+
+const STORAGE_KEY = 'vital-datos';
+const VERSION = 1;
 
 export const useDataStore = create<DataState>()(
   persist(
@@ -108,10 +116,20 @@ export const useDataStore = create<DataState>()(
           return { areas: lista.map((a, orden) => ({ ...a, orden })) };
         }),
       reemplazarTodo: (datos) => set(datos),
+      // Desde el widget: marca el día, o lo desmarca solo si el registro no tiene nada que perder.
+      alternarDia: (actividadId, fecha) =>
+        set((s) => {
+          const delDia = s.registros.filter((r) => r.actividadId === actividadId && r.fecha === fecha);
+          if (!delDia.length) {
+            return { registros: [...s.registros, { id: nuevoId(), actividadId, fecha, creadoEn: Date.now() }] };
+          }
+          const simple = delDia.find(esSimple);
+          return simple ? { registros: s.registros.filter((r) => r !== simple) } : {};
+        }),
     }),
     {
-      name: 'vital-datos',
-      version: 1,
+      name: STORAGE_KEY,
+      version: VERSION,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ areas, actividades, registros }) => ({ areas, actividades, registros }),
     },
@@ -120,3 +138,12 @@ export const useDataStore = create<DataState>()(
 
 /** Nombres de foto que siguen referenciados (una foto puede compartirse entre registros creados juntos). */
 export const fotosEnUso = (registros: Registro[]) => new Set(registros.flatMap((r) => r.fotos ?? []));
+
+/**
+ * Escribe ya el estado al disco. persist guarda sin esperar; el widget corre en
+ * una tarea en segundo plano que Android puede cerrar apenas termina.
+ */
+export async function guardarAhora(): Promise<void> {
+  const { areas, actividades, registros } = useDataStore.getState();
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ state: { areas, actividades, registros }, version: VERSION }));
+}

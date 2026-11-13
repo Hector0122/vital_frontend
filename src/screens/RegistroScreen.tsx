@@ -9,6 +9,7 @@ import { DateField } from '../components/DateField';
 import { Screen } from '../components/Screen';
 import type { MainTabParamList } from '../navigation/types';
 import { borrarFotosHuerfanas, elegirFoto, fotoUri } from '../services/fotos';
+import { sincronizar } from '../services/nube';
 import { fotosEnUso, useDataStore } from '../stores/dataStore';
 import { colors, iconSize, radius, spacing, type } from '../theme';
 import { areasConActividades, DURACIONES, formatDuracion, SENSACIONES } from '../utils/catalogo';
@@ -70,6 +71,7 @@ export function RegistroScreen({ navigation, route }: Props) {
     // Fotos quitadas del formulario ya no las usa nadie.
     borrarFotosHuerfanas(fotosEnUso(useDataStore.getState().registros));
     Toast.show({ type: 'success', text1: editando ? 'Registro actualizado' : 'Registrado' });
+    sincronizar();
     salir();
   };
 
@@ -83,6 +85,7 @@ export function RegistroScreen({ navigation, route }: Props) {
           borrarRegistro(editando!.id);
           borrarFotosHuerfanas(fotosEnUso(useDataStore.getState().registros));
           Toast.show({ type: 'success', text1: 'Registro borrado' });
+          sincronizar();
           salir();
         },
       },

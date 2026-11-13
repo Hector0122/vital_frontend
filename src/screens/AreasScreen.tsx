@@ -30,7 +30,7 @@ export function AreasScreen() {
           activo: true,
         };
 
-  const guardar = ({ nombre, icono, color, activo }: ValoresEditor) => {
+  const guardar = ({ nombre, icono, color, activo, metaSemanal }: ValoresEditor) => {
     if (edicion?.tipo === 'area')
       guardarArea({
         id: edicion.area?.id,
@@ -46,6 +46,7 @@ export function AreasScreen() {
         nombre,
         icono,
         activo,
+        metaSemanal,
       });
     setEdicion(undefined);
   };
@@ -106,7 +107,7 @@ export function AreasScreen() {
               .map(a => (
                 <Chip
                   key={a.id}
-                  label={a.activo ? a.nombre : `${a.nombre} (oculta)`}
+                  label={`${a.nombre}${a.metaSemanal ? ` · ${a.metaSemanal}×` : ''}${a.activo ? '' : ' (oculta)'}`}
                   icono={a.icono}
                   color={area.color}
                   seleccionado={a.activo}
@@ -152,7 +153,8 @@ export function AreasScreen() {
               : 'Nueva actividad'
           }
           inicial={inicial}
-          conColor={edicion?.tipo === 'area'}
+          conColor={edicion.tipo === 'area'}
+          conMeta={edicion.tipo === 'actividad'}
           onGuardar={guardar}
           onCerrar={() => setEdicion(undefined)}
         />

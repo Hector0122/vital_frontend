@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Vital</string>
+    <string name="widget_metas_descripcion">Tus metas de la semana; toca un día para marcarlo.</string>
 </resources>

@@ -13,6 +13,7 @@ const modulesToTransform = [
 
 module.exports = {
   preset: '@react-native/jest-preset',
+  testPathIgnorePatterns: ['/node_modules/', '/cloud-worker/'],
   transformIgnorePatterns: [`node_modules/(?!(${modulesToTransform})/)`],
 };
 module.exports.setupFiles = ['./jest.setup.js', '<rootDir>/node_modules/@react-native-documents/picker/jest/build/jest/setup.js'];

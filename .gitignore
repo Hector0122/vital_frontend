@@ -76,3 +76,7 @@ yarn-error.log
 
 # Documento de producto con notas personales: solo local
 PROYECTO_EQUILIBRIO.md
+
+# Worker
+.wrangler/
+.dev.vars

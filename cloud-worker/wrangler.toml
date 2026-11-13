@@ -1,0 +1,10 @@
+# Vital: guarda las fotos en R2. Setup: ver README.md.
+name = "vital-cloud"
+main = "src/index.ts"
+compatibility_date = "2025-10-01"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "vital"
+
+# Secret (wrangler secret put API_TOKEN): token personal que manda la app.
