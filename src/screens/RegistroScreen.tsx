@@ -1,5 +1,3 @@
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
 import { Alert, BackHandler, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -9,7 +7,7 @@ import { Button } from '../components/Button';
 import { Chip } from '../components/Chip';
 import { DateField } from '../components/DateField';
 import { Screen } from '../components/Screen';
-import type { MainTabParamList, RootStackParamList } from '../navigation/types';
+import type { RootStackParamList } from '../navigation/types';
 import { borrarFotosHuerfanas, elegirFoto, fotoUri } from '../services/fotos';
 import { sincronizar } from '../services/nube';
 import { fotosEnUso, useDataStore } from '../stores/dataStore';
@@ -17,10 +15,15 @@ import { colors, iconSize, radius, spacing, type } from '../theme';
 import { areasConActividades, DURACIONES, formatDuracion, frecuentes, SENSACIONES } from '../utils/catalogo';
 import { hoy } from '../utils/fechas';
 
-type Props = CompositeScreenProps<
-  BottomTabScreenProps<MainTabParamList, 'Registro'>,
-  NativeStackScreenProps<RootStackParamList>
->;
+type Props = NativeStackScreenProps<RootStackParamList, 'Registro'>;
+
+function Cerrar({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={styles.cerrar} accessibilityRole="button" accessibilityLabel="Cerrar" hitSlop={8}>
+      <Icon name="close" size={iconSize.md} color={colors.muted} />
+    </Pressable>
+  );
+}
 
 /** Dos pasos: 1) qué hiciste, 2) detalles opcionales. Editar entra directo al paso 2. */
 export function RegistroScreen({ navigation, route }: Props) {
@@ -63,9 +66,7 @@ export function RegistroScreen({ navigation, route }: Props) {
   }, [paso, editando]);
 
   const salir = () => {
-    reiniciar(undefined, undefined);
-    navigation.setParams({ registroId: undefined, actividadId: undefined });
-    navigation.navigate('Inicio');
+    navigation.goBack();
   };
 
   const alternar = (id: string) =>
@@ -122,6 +123,7 @@ export function RegistroScreen({ navigation, route }: Props) {
     return (
       <Screen>
         <ScrollView contentContainerStyle={styles.content}>
+          <Cerrar onPress={salir} />
           <Text style={styles.paso}>Paso 1 de 2</Text>
           <Text style={styles.title}>¿Qué hiciste?</Text>
           <Text style={styles.hint}>Puedes elegir varias.</Text>
@@ -175,7 +177,6 @@ export function RegistroScreen({ navigation, route }: Props) {
             onPress={() => setPaso(2)}
             disabled={!seleccion.length}
           />
-          {editando && <Button title="Cancelar" variant="ghost" onPress={salir} />}
         </View>
       </Screen>
     );
@@ -184,6 +185,7 @@ export function RegistroScreen({ navigation, route }: Props) {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <Cerrar onPress={salir} />
         {!editando && <Text style={styles.paso}>Paso 2 de 2</Text>}
         <Text style={styles.title}>{editando ? 'Editar registro' : 'Detalles'}</Text>
         {!editando && <Text style={styles.hint}>Todo es opcional. Puedes registrar ya.</Text>}
@@ -290,6 +292,7 @@ export function RegistroScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   content: { padding: spacing.md, paddingBottom: spacing.xl, gap: spacing.xs },
+  cerrar: { width: 44, height: 44, marginLeft: -10, alignItems: 'center', justifyContent: 'center' },
   paso: { ...type.label, color: colors.primary, textTransform: 'uppercase' },
   title: { ...type.h1, color: colors.text },
   hint: { ...type.bodySm, color: colors.muted, marginBottom: spacing.xs },

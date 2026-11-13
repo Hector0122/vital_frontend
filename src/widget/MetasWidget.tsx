@@ -105,11 +105,11 @@ export function MetasWidget({ metas, hoy }: { metas: MetaWidget[]; hoy: string }
       ) : (
         <FlexWidget clickAction="OPEN_APP" style={{ width: 'match_parent', marginTop: 12 }}>
           <TextWidget
-            text="Ponle una meta semanal a una actividad para verla aquí."
+            text="Tus metas de la semana aparecerán aquí."
             style={{ fontSize: 14, color: TEXTO }}
           />
           <TextWidget
-            text="Ajustes → Áreas y actividades"
+            text="Al cerrar la semana, Vital te propone 1 o 2."
             style={{ fontSize: 12, color: TENUE, marginTop: 4, fontFamily: 'IBMPlexMono-Medium' }}
           />
         </FlexWidget>

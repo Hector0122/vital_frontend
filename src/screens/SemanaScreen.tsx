@@ -1,17 +1,22 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RegistroItem } from '../components/RegistroItem';
 import { Screen } from '../components/Screen';
-import type { MainTabParamList } from '../navigation/types';
+import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { useDataStore } from '../stores/dataStore';
 import { colors, iconSize, radius, spacing, type } from '../theme';
 import { formatDuracion } from '../utils/catalogo';
 import { diasDeSemana, formatFecha, hoy, parseIso } from '../utils/fechas';
 import { resumenSemana, veces } from '../utils/resumen';
 
-type Props = BottomTabScreenProps<MainTabParamList, 'Semana'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<MainTabParamList, 'Semana'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
 
 const INICIALES = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 

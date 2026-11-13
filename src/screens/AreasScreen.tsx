@@ -30,7 +30,8 @@ export function AreasScreen() {
           activo: true,
         };
 
-  const guardar = ({ nombre, icono, color, activo, metaSemanal }: ValoresEditor) => {
+  // Sin metaSemanal: esa la pone la revisión semanal y aquí se conserva.
+  const guardar = ({ nombre, icono, color, activo }: ValoresEditor) => {
     if (edicion?.tipo === 'area')
       guardarArea({
         id: edicion.area?.id,
@@ -46,7 +47,6 @@ export function AreasScreen() {
         nombre,
         icono,
         activo,
-        metaSemanal,
       });
     setEdicion(undefined);
   };
@@ -154,7 +154,6 @@ export function AreasScreen() {
           }
           inicial={inicial}
           conColor={edicion.tipo === 'area'}
-          conMeta={edicion.tipo === 'actividad'}
           onGuardar={guardar}
           onCerrar={() => setEdicion(undefined)}
         />

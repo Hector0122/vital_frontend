@@ -31,14 +31,14 @@ export function RevisionCard({ revision }: { revision: Revision }) {
       <View style={styles.header}>
         <Icon name="weather-sunset" size={iconSize.md} color={colors.primary} />
         <Text style={styles.titulo}>
-          Tu semana · {corta(dias[0])} – {corta(dias[6])}
+          Cómo te fue · {corta(dias[0])} – {corta(dias[6])}
         </Text>
       </View>
       <Text style={styles.analisis}>{revision.analisis}</Text>
 
       {metas.length ? (
         <>
-          <Text style={styles.label}>Para esta semana, si te late</Text>
+          <Text style={styles.label}>Para la siguiente, si te late</Text>
           {metas.map((m, i) => {
             const nombre = actividades.find((a) => a.id === m.actividadId)?.nombre ?? 'Actividad';
             return (

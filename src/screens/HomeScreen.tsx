@@ -60,7 +60,7 @@ export function HomeScreen({ navigation }: Props) {
 
         <Button title="Registrar actividad" onPress={() => navigation.navigate('Registro')} />
 
-        <Text style={styles.section}>Tus metas de la semana</Text>
+        <Text style={styles.section}>Esta semana</Text>
         {metas.length ? (
           <View style={styles.card}>
             <View style={styles.fila}>
@@ -115,10 +115,12 @@ export function HomeScreen({ navigation }: Props) {
             })}
           </View>
         ) : (
-          <Pressable style={styles.card} onPress={() => navigation.navigate('Areas')} accessibilityRole="button">
-            <Text style={styles.body}>Ponle una meta semanal a alguna actividad, por ejemplo «Ejercicio · 3 veces».</Text>
-            <Text style={styles.link}>Elegir metas</Text>
-          </Pressable>
+          <View style={styles.card}>
+            <Text style={styles.body}>
+              Registra lo que vayas haciendo. Al cerrar la semana (domingo en la noche) te propongo una o dos metas
+              ligeras para la siguiente.
+            </Text>
+          </View>
         )}
 
         <Text style={styles.section}>Recientes</Text>
@@ -178,7 +180,6 @@ const styles = StyleSheet.create({
   numero: { ...type.caption, color: colors.muted },
   check: { fontSize: 18, lineHeight: 22, fontWeight: '700', color: VERDE },
   body: { ...type.bodySm, color: colors.text },
-  link: { ...type.label, color: colors.primary },
   dia: { ...type.label, color: colors.muted, textTransform: 'uppercase', marginTop: spacing.xs },
   vacio: { ...type.bodySm, color: colors.muted },
 });

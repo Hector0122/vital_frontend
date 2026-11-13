@@ -3,7 +3,6 @@ import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { areaHues, colors, iconSize, radius, spacing, type } from '../theme';
 import { Button } from './Button';
-import { Chip } from './Chip';
 
 // Iconos MDI curados para áreas y actividades (sin buscador: YAGNI).
 const ICONOS = [
@@ -19,7 +18,6 @@ export interface ValoresEditor {
   icono: string;
   color?: string;
   activo: boolean;
-  metaSemanal?: number;
 }
 
 interface Props {
@@ -27,12 +25,11 @@ interface Props {
   titulo: string;
   inicial: ValoresEditor;
   conColor: boolean; // solo las áreas tienen color
-  conMeta: boolean; // solo las actividades tienen meta semanal
   onGuardar: (v: ValoresEditor) => void;
   onCerrar: () => void;
 }
 
-export function EditorModal({ visible, titulo, inicial, conColor, conMeta, onGuardar, onCerrar }: Props) {
+export function EditorModal({ visible, titulo, inicial, conColor, onGuardar, onCerrar }: Props) {
   const [v, setV] = useState(inicial);
   const nombre = v.nombre.trim();
 
@@ -82,23 +79,6 @@ export function EditorModal({ visible, titulo, inicial, conColor, conMeta, onGua
                 </Pressable>
               ))}
             </View>
-
-            {conMeta && (
-              <>
-                <Text style={styles.body}>Meta semanal (opcional)</Text>
-                <Text style={styles.hint}>Con meta, aparece en el widget de la pantalla de inicio.</Text>
-                <View style={styles.wrap}>
-                  {[undefined, 1, 2, 3, 4, 5, 6, 7].map((n) => (
-                    <Chip
-                      key={n ?? 0}
-                      label={n ? `${n}×` : 'Sin meta'}
-                      seleccionado={v.metaSemanal === n}
-                      onPress={() => setV({ ...v, metaSemanal: n })}
-                    />
-                  ))}
-                </View>
-              </>
-            )}
 
             <View style={styles.fila}>
               <View style={styles.flex}>

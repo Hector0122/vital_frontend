@@ -2,7 +2,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import React from 'react';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { HomeScreen } from '../screens/HomeScreen';
-import { RegistroScreen } from '../screens/RegistroScreen';
 import { SemanaScreen } from '../screens/SemanaScreen';
 import { colors, fontFamily, iconSize } from '../theme';
 import type { MainTabParamList } from './types';
@@ -11,7 +10,6 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const TAB_ICONS: Record<keyof MainTabParamList, string> = {
   Inicio: 'home-variant-outline',
-  Registro: 'plus-circle-outline',
   Semana: 'calendar-week',
 };
 
@@ -33,7 +31,6 @@ export function MainTabNavigator() {
       })}
     >
       <Tab.Screen name="Inicio" component={HomeScreen} />
-      <Tab.Screen name="Registro" component={RegistroScreen} options={{ title: 'Registrar' }} />
       <Tab.Screen name="Semana" component={SemanaScreen} options={{ title: 'Mi semana' }} />
     </Tab.Navigator>
   );
