@@ -1,5 +1,5 @@
 import { datosIniciales, useDataStore, type Registro } from '../src/stores/dataStore';
-import { modeloWidget } from '../src/widget/modelo';
+import { modeloRapido, modeloWidget } from '../src/widget/modelo';
 
 const reg = (actividadId: string, fecha: string, extra: Partial<Registro> = {}): Registro => ({
   id: Math.random().toString(),
@@ -37,4 +37,14 @@ test('alternarDia marca y desmarca, pero nunca borra un registro con detalles', 
   alternarDia('a2-0', '2026-11-10');
   expect(delDia()).toHaveLength(1);
   expect(delDia()[0].nota).toBe('capítulo 3');
+});
+
+test('registro rápido: frecuentes primero, completa hasta 6 y marca lo de hoy', () => {
+  const datos = datosIniciales();
+  datos.registros = [reg('a2-0', '2026-11-10'), reg('a2-0', '2026-11-11'), reg('a1-1', '2026-11-13')];
+  const botones = modeloRapido(datos, '2026-11-13');
+  expect(botones).toHaveLength(6);
+  expect(botones.slice(0, 2).map((b) => b.actividadId)).toEqual(['a2-0', 'a1-1']);
+  expect(botones.find((b) => b.actividadId === 'a1-1')!.hechoHoy).toBe(true);
+  expect(botones.find((b) => b.actividadId === 'a2-0')!.hechoHoy).toBe(false);
 });

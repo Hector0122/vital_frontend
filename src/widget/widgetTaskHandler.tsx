@@ -2,19 +2,27 @@ import React from 'react';
 import { requestWidgetUpdate, type WidgetTaskHandlerProps } from 'react-native-android-widget';
 import { guardarAhora, useDataStore } from '../stores/dataStore';
 import { hoy } from '../utils/fechas';
-import { modeloWidget } from './modelo';
+import { modeloRapido, modeloWidget } from './modelo';
 import { CLICK_MARCAR, MetasWidget } from './MetasWidget';
+import { RapidoWidget } from './RapidoWidget';
 
-export const WIDGET_NAME = 'Metas';
-
-const render = () => {
-  const dia = hoy();
-  return <MetasWidget metas={modeloWidget(useDataStore.getState(), dia)} hoy={dia} />;
+// Nombres = clases nativas en android/app/src/main/java/com/vital/widget/.
+const WIDGETS = {
+  Metas: () => {
+    const dia = hoy();
+    return <MetasWidget metas={modeloWidget(useDataStore.getState(), dia)} hoy={dia} />;
+  },
+  Rapido: () => {
+    const dia = hoy();
+    return <RapidoWidget botones={modeloRapido(useDataStore.getState(), dia)} hoy={dia} />;
+  },
 };
 
 /** Para llamar desde la app cuando cambian los datos. */
 export function actualizarWidget(): void {
-  requestWidgetUpdate({ widgetName: WIDGET_NAME, renderWidget: render }).catch(() => {});
+  for (const [widgetName, renderWidget] of Object.entries(WIDGETS)) {
+    requestWidgetUpdate({ widgetName, renderWidget }).catch(() => {});
+  }
 }
 
 /** Corre en segundo plano, con o sin la app abierta. */
@@ -27,5 +35,9 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
     useDataStore.getState().alternarDia(actividadId, fecha);
     await guardarAhora();
   }
-  if (props.widgetAction !== 'WIDGET_DELETED') props.renderWidget(render());
+  if (props.widgetAction === 'WIDGET_DELETED') return;
+  const render = WIDGETS[props.widgetInfo.widgetName as keyof typeof WIDGETS] ?? WIDGETS.Metas;
+  props.renderWidget(render());
+  // Marcar en un widget también cambia el otro.
+  if (props.widgetAction === 'WIDGET_CLICK') actualizarWidget();
 }

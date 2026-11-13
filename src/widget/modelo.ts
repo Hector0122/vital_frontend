@@ -1,5 +1,6 @@
 import { esSimple, type Datos } from '../stores/dataStore';
 import { diasDeSemana, parseIso } from '../utils/fechas';
+import { frecuentes } from '../utils/catalogo';
 
 export const MAX_METAS = 4; // shortcut: el widget no hace scroll; con más metas, cambiar a ListWidget
 
@@ -52,4 +53,34 @@ export function modeloWidget({ areas, actividades, registros }: Datos, hoy: stri
         dias: ds,
       };
     });
+}
+
+export interface BotonRapido {
+  actividadId: string;
+  nombre: string;
+  color: string;
+  hechoHoy: boolean;
+  conDetalle: boolean;
+}
+
+/** Widget de registro rápido: tus frecuentes; si aún hay pocas, se completa con las activas en orden. */
+export function modeloRapido({ areas, actividades, registros }: Datos, hoy: string, n = 6): BotonRapido[] {
+  const areasActivas = new Map(areas.filter((a) => a.activo).map((a) => [a.id, a]));
+  const visibles = actividades.filter((a) => a.activo && areasActivas.has(a.areaId));
+  const elegidas = frecuentes(registros, visibles, n);
+  const enOrden = [...visibles].sort((a, b) => areasActivas.get(a.areaId)!.orden - areasActivas.get(b.areaId)!.orden);
+  for (const a of enOrden) {
+    if (elegidas.length >= n) break;
+    if (!elegidas.includes(a)) elegidas.push(a);
+  }
+  return elegidas.map((a) => {
+    const deHoy = registros.filter((r) => r.actividadId === a.id && r.fecha === hoy);
+    return {
+      actividadId: a.id,
+      nombre: a.nombre,
+      color: areasActivas.get(a.areaId)!.color,
+      hechoHoy: deHoy.length > 0,
+      conDetalle: deHoy.length > 0 && !deHoy.some(esSimple),
+    };
+  });
 }

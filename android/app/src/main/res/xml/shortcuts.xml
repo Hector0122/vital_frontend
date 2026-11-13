@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Atajo al dejar presionado el ícono: abre Registrar (deep link en RootNavigator). -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="registrar"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/atajo_registrar">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="vital://registrar"
+            android:targetPackage="com.vital"
+            android:targetClass="com.vital.MainActivity" />
+    </shortcut>
+</shortcuts>
