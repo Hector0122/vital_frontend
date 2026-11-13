@@ -13,17 +13,35 @@ interface Props {
 }
 
 /** Ficha tocable: actividades, sensación, duración. */
-export function Chip({ label, icono, color = colors.primary, seleccionado, onPress, onLongPress }: Props) {
+export function Chip({
+  label,
+  icono,
+  color = colors.primary,
+  seleccionado,
+  onPress,
+  onLongPress,
+}: Props) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: !!seleccionado }}
       onPress={onPress}
       onLongPress={onLongPress}
-      style={[styles.chip, seleccionado && { borderColor: color, backgroundColor: `${color}33` }]}
+      style={[
+        styles.chip,
+        seleccionado && { borderColor: color, backgroundColor: `${color}33` },
+      ]}
     >
-      {icono && <Icon name={icono} size={iconSize.sm} color={seleccionado ? color : colors.muted} />}
-      <Text style={[styles.text, seleccionado && { color: colors.text }]}>{label}</Text>
+      {icono && (
+        <Icon
+          name={icono}
+          size={iconSize.sm}
+          color={seleccionado ? color : colors.muted}
+        />
+      )}
+      <Text style={[styles.text, seleccionado && { color: colors.text }]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }

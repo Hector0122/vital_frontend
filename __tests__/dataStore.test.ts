@@ -4,7 +4,10 @@ import { armarRespaldo, leerRespaldo } from '../src/services/backup';
 
 test('registrar varias, editar y borrar', () => {
   const s = useDataStore.getState();
-  s.agregarRegistros(['a0-0', 'a2-0'], { fecha: '2026-11-13', fotos: ['x.jpg'] });
+  s.agregarRegistros(['a0-0', 'a2-0'], {
+    fecha: '2026-11-13',
+    fotos: ['x.jpg'],
+  });
   let { registros } = useDataStore.getState();
   expect(registros).toHaveLength(2);
 
@@ -21,15 +24,24 @@ test('registrar varias, editar y borrar', () => {
 
 test('moverArea reordena sin huecos', () => {
   useDataStore.getState().moverArea('a1', -1);
-  const orden = [...useDataStore.getState().areas].sort((a, b) => a.orden - b.orden).map((a) => a.id);
+  const orden = [...useDataStore.getState().areas]
+    .sort((a, b) => a.orden - b.orden)
+    .map(a => a.id);
   expect(orden.slice(0, 2)).toEqual(['a1', 'a0']);
   useDataStore.getState().moverArea(orden[0], -1); // ya está arriba: no cambia
-  expect(useDataStore.getState().areas.map((a) => a.orden).sort()).toEqual([0, 1, 2, 3, 4]);
+  expect(
+    useDataStore
+      .getState()
+      .areas.map(a => a.orden)
+      .sort(),
+  ).toEqual([0, 1, 2, 3, 4]);
 });
 
 test('el respaldo ida y vuelta conserva los datos; un archivo ajeno se rechaza', () => {
   const { areas, actividades, registros } = useDataStore.getState();
-  const texto = JSON.stringify(armarRespaldo({ areas, actividades, registros }, { 'a.jpg': 'AAA' }));
+  const texto = JSON.stringify(
+    armarRespaldo({ areas, actividades, registros }, { 'a.jpg': 'AAA' }),
+  );
   const r = leerRespaldo(texto);
   expect(r.datos.areas).toEqual(areas);
   expect(r.fotos['a.jpg']).toBe('AAA');
@@ -38,6 +50,9 @@ test('el respaldo ida y vuelta conserva los datos; un archivo ajeno se rechaza',
 });
 
 test('pendientes de la nube: sube lo nuevo y borra lo que ya no se usa', () => {
-  expect(pendientes(new Set(['a.jpg', 'b.jpg']), ['b.jpg', 'c.jpg'])).toEqual({ subir: ['a.jpg'], borrar: ['c.jpg'] });
+  expect(pendientes(new Set(['a.jpg', 'b.jpg']), ['b.jpg', 'c.jpg'])).toEqual({
+    subir: ['a.jpg'],
+    borrar: ['c.jpg'],
+  });
   expect(pendientes(new Set(), [])).toEqual({ subir: [], borrar: [] });
 });

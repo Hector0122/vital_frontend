@@ -16,20 +16,45 @@ interface Props {
   sinFecha?: boolean; // cuando la lista ya agrupa por día
 }
 
-export function RegistroItem({ registro, actividad, area, onPress, sinFecha }: Props) {
+export function RegistroItem({
+  registro,
+  actividad,
+  area,
+  onPress,
+  sinFecha,
+}: Props) {
   const detalle = [
-    !sinFecha && capitalizar(formatFecha(registro.fecha, { weekday: 'short', day: 'numeric', month: 'short' })),
+    !sinFecha &&
+      capitalizar(
+        formatFecha(registro.fecha, {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+        }),
+      ),
     registro.duracionMin && formatDuracion(registro.duracionMin),
     registro.sensacion,
-    registro.fotos?.length && `${registro.fotos.length} foto${registro.fotos.length > 1 ? 's' : ''}`,
+    registro.fotos?.length &&
+      `${registro.fotos.length} foto${registro.fotos.length > 1 ? 's' : ''}`,
   ].filter(Boolean);
 
   return (
-    <Pressable style={styles.row} onPress={onPress} accessibilityRole="button" accessibilityHint="Editar registro">
-      <Icon name={actividad?.icono ?? 'circle-outline'} size={iconSize.md} color={area?.color ?? colors.muted} />
+    <Pressable
+      style={styles.row}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityHint="Editar registro"
+    >
+      <Icon
+        name={actividad?.icono ?? 'circle-outline'}
+        size={iconSize.md}
+        color={area?.color ?? colors.muted}
+      />
       <View style={styles.flex}>
         <Text style={styles.nombre}>{actividad?.nombre ?? 'Actividad'}</Text>
-        {detalle.length ? <Text style={styles.detalle}>{detalle.join(' · ')}</Text> : null}
+        {detalle.length ? (
+          <Text style={styles.detalle}>{detalle.join(' · ')}</Text>
+        ) : null}
         {registro.nota ? (
           <Text style={styles.nota} numberOfLines={2}>
             {registro.nota}
@@ -41,7 +66,13 @@ export function RegistroItem({ registro, actividad, area, onPress, sinFecha }: P
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: spacing.sm, paddingVertical: spacing.sm, alignItems: 'flex-start', minHeight: 48 },
+  row: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    alignItems: 'flex-start',
+    minHeight: 48,
+  },
   flex: { flex: 1 },
   nombre: { ...type.body, color: colors.text },
   detalle: { ...type.caption, color: colors.muted },

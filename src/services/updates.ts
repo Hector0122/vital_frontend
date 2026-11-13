@@ -4,7 +4,8 @@ import { APP_VERSION } from '../appVersion';
 // Mismo mecanismo que Vaulta: cada tag `v*` publica un APK como GitHub
 // Release (ver .github/workflows/release.yml) y la app compara su versión con
 // la última release. El repo es público, así que no hace falta token.
-const LATEST_RELEASE = 'https://api.github.com/repos/Hector0122/vital_frontend/releases/latest';
+const LATEST_RELEASE =
+  'https://api.github.com/repos/Hector0122/vital_frontend/releases/latest';
 
 /** Avisa si hay un APK más nuevo publicado. Falla en silencio: sin red o
  *  sin releases simplemente no muestra nada. */
@@ -17,12 +18,20 @@ export async function checkForUpdate(): Promise<void> {
       tag_name?: string;
       assets?: { name: string; browser_download_url: string }[];
     };
-    const apk = release.assets?.find((a) => a.name.endsWith('.apk'));
-    if (!apk || !release.tag_name || release.tag_name === `v${APP_VERSION}`) return;
-    Alert.alert('Nueva versión disponible', `${release.tag_name} está lista para instalar.`, [
-      { text: 'Después', style: 'cancel' },
-      { text: 'Actualizar', onPress: () => Linking.openURL(apk.browser_download_url) },
-    ]);
+    const apk = release.assets?.find(a => a.name.endsWith('.apk'));
+    if (!apk || !release.tag_name || release.tag_name === `v${APP_VERSION}`)
+      return;
+    Alert.alert(
+      'Nueva versión disponible',
+      `${release.tag_name} está lista para instalar.`,
+      [
+        { text: 'Después', style: 'cancel' },
+        {
+          text: 'Actualizar',
+          onPress: () => Linking.openURL(apk.browser_download_url),
+        },
+      ],
+    );
   } catch {
     // Sin red: se vuelve a intentar en el próximo inicio.
   }

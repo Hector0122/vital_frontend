@@ -1,4 +1,10 @@
-import { celdasDelMes, diasDeSemana, offsetSemanas, parseIso, toIso } from '../src/utils/fechas';
+import {
+  celdasDelMes,
+  diasDeSemana,
+  offsetSemanas,
+  parseIso,
+  toIso,
+} from '../src/utils/fechas';
 
 test('toIso usa la fecha local, no UTC', () => {
   expect(toIso(new Date(2026, 10, 13, 23, 59))).toBe('2026-11-13');
@@ -8,7 +14,13 @@ test('toIso usa la fecha local, no UTC', () => {
 test('diasDeSemana va de lunes a domingo', () => {
   // 2026-11-13 es viernes
   expect(diasDeSemana('2026-11-13')).toEqual([
-    '2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13', '2026-11-14', '2026-11-15',
+    '2026-11-09',
+    '2026-11-10',
+    '2026-11-11',
+    '2026-11-12',
+    '2026-11-13',
+    '2026-11-14',
+    '2026-11-15',
   ]);
   expect(diasDeSemana('2026-11-15')[0]).toBe('2026-11-09'); // domingo pertenece a la misma semana
   expect(diasDeSemana('2026-11-13', -1)[0]).toBe('2026-11-02');
@@ -17,7 +29,15 @@ test('diasDeSemana va de lunes a domingo', () => {
 
 test('celdasDelMes alinea el día 1 con su día de la semana', () => {
   const nov = celdasDelMes(2026, 10); // noviembre 2026 empieza en domingo
-  expect(nov.slice(0, 7)).toEqual([null, null, null, null, null, null, '2026-11-01']);
+  expect(nov.slice(0, 7)).toEqual([
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    '2026-11-01',
+  ]);
   expect(nov.filter(Boolean)).toHaveLength(30);
 });
 

@@ -55,36 +55,92 @@ export interface Datos {
   actividades: Actividad[];
   registros: Registro[];
   revisiones?: Revision[]; // opcional: respaldos anteriores no la traen
+  enfoques?: Record<string, string>; // lunes de la semana -> "me quiero enfocar en…"
 }
 
-export type CamposRegistro = Pick<Registro, 'fecha' | 'duracionMin' | 'nota' | 'sensacion' | 'fotos'>;
+export type CamposRegistro = Pick<
+  Registro,
+  'fecha' | 'duracionMin' | 'nota' | 'sensacion' | 'fotos'
+>;
 
 interface DataState extends Datos {
   agregarRegistros: (actividadIds: string[], campos: CamposRegistro) => void;
-  editarRegistro: (id: string, cambios: Partial<Omit<Registro, 'id' | 'creadoEn'>>) => void;
+  editarRegistro: (
+    id: string,
+    cambios: Partial<Omit<Registro, 'id' | 'creadoEn'>>,
+  ) => void;
   borrarRegistro: (id: string) => void;
   guardarArea: (area: Omit<Area, 'id' | 'orden'> & { id?: string }) => void;
-  guardarActividad: (actividad: Omit<Actividad, 'id'> & { id?: string }) => void;
+  guardarActividad: (
+    actividad: Omit<Actividad, 'id'> & { id?: string },
+  ) => void;
   moverArea: (id: string, delta: -1 | 1) => void;
   reemplazarTodo: (datos: Datos) => void;
   alternarDia: (actividadId: string, fecha: string) => void;
   guardarRevision: (r: Revision) => void;
   /** Las metas aceptadas pasan a ser las metas de la semana; las demás se quitan. */
-  aplicarRevision: (semana: string, metas: { actividadId: string; veces: number }[]) => void;
+  aplicarRevision: (
+    semana: string,
+    metas: { actividadId: string; veces: number }[],
+  ) => void;
   descartarRevision: (semana: string) => void;
+  /** Reemplaza las metas de la semana: las listadas quedan, las demás se quitan. */
+  aplicarMetas: (metas: { actividadId: string; veces: number }[]) => void;
+  guardarEnfoque: (semana: string, texto: string) => void;
 }
 
-export const nuevoId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+export const nuevoId = () =>
+  `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 /** Registro sin duración, nota, sensación ni fotos: se puede quitar sin perder nada. */
-export const esSimple = (r: Registro) => !r.duracionMin && !r.nota && !r.sensacion && !r.fotos?.length;
+export const esSimple = (r: Registro) =>
+  !r.duracionMin && !r.nota && !r.sensacion && !r.fotos?.length;
 
 const SEED: [string, string, [string, string][]][] = [
-  ['Bienestar', 'leaf', [['Ejercicio', 'run'], ['Caminata', 'walk'], ['Comer con calma', 'food-apple-outline']]],
-  ['Creatividad', 'palette-outline', [['Bajo / música', 'guitar-electric'], ['Dibujo', 'draw'], ['Proyecto personal', 'lightbulb-outline']]],
-  ['Crecimiento', 'sprout-outline', [['Lectura', 'book-open-variant'], ['Aprender algo', 'school-outline']]],
-  ['Vida personal', 'account-group-outline', [['Tiempo con mis hijos', 'human-male-child'], ['Familia', 'home-heart'], ['Salir de casa', 'map-marker-outline']]],
-  ['Descanso', 'weather-night', [['Descansé', 'sofa-outline'], ['Ocio elegido', 'gamepad-variant-outline'], ['Desconectar', 'power-sleep']]],
+  [
+    'Bienestar',
+    'leaf',
+    [
+      ['Ejercicio', 'run'],
+      ['Caminata', 'walk'],
+      ['Comer con calma', 'food-apple-outline'],
+    ],
+  ],
+  [
+    'Creatividad',
+    'palette-outline',
+    [
+      ['Bajo / música', 'guitar-electric'],
+      ['Dibujo', 'draw'],
+      ['Proyecto personal', 'lightbulb-outline'],
+    ],
+  ],
+  [
+    'Crecimiento',
+    'sprout-outline',
+    [
+      ['Lectura', 'book-open-variant'],
+      ['Aprender algo', 'school-outline'],
+    ],
+  ],
+  [
+    'Vida personal',
+    'account-group-outline',
+    [
+      ['Tiempo con mis hijos', 'human-male-child'],
+      ['Familia', 'home-heart'],
+      ['Salir de casa', 'map-marker-outline'],
+    ],
+  ],
+  [
+    'Descanso',
+    'weather-night',
+    [
+      ['Descansé', 'sofa-outline'],
+      ['Ocio elegido', 'gamepad-variant-outline'],
+      ['Desconectar', 'power-sleep'],
+    ],
+  ],
 ];
 
 export function datosIniciales(): Datos {
@@ -92,8 +148,23 @@ export function datosIniciales(): Datos {
   const actividades: Actividad[] = [];
   SEED.forEach(([nombre, icono, acts], i) => {
     const areaId = `a${i}`;
-    areas.push({ id: areaId, nombre, icono, color: areaHues[i % areaHues.length], orden: i, activo: true });
-    acts.forEach(([n, ic], j) => actividades.push({ id: `a${i}-${j}`, areaId, nombre: n, icono: ic, activo: true }));
+    areas.push({
+      id: areaId,
+      nombre,
+      icono,
+      color: areaHues[i % areaHues.length],
+      orden: i,
+      activo: true,
+    });
+    acts.forEach(([n, ic], j) =>
+      actividades.push({
+        id: `a${i}-${j}`,
+        areaId,
+        nombre: n,
+        icono: ic,
+        activo: true,
+      }),
+    );
   });
   return { areas, actividades, registros: [], revisiones: [] };
 }
@@ -103,83 +174,155 @@ const VERSION = 1;
 
 export const useDataStore = create<DataState>()(
   persist(
-    (set) => ({
+    set => ({
       ...datosIniciales(),
       agregarRegistros: (actividadIds, campos) =>
-        set((s) => ({
+        set(s => ({
           registros: [
             ...s.registros,
-            ...actividadIds.map((actividadId) => ({ id: nuevoId(), actividadId, ...campos, creadoEn: Date.now() })),
+            ...actividadIds.map(actividadId => ({
+              id: nuevoId(),
+              actividadId,
+              ...campos,
+              creadoEn: Date.now(),
+            })),
           ],
         })),
       editarRegistro: (id, cambios) =>
-        set((s) => ({ registros: s.registros.map((r) => (r.id === id ? { ...r, ...cambios } : r)) })),
-      borrarRegistro: (id) => set((s) => ({ registros: s.registros.filter((r) => r.id !== id) })),
+        set(s => ({
+          registros: s.registros.map(r =>
+            r.id === id ? { ...r, ...cambios } : r,
+          ),
+        })),
+      borrarRegistro: id =>
+        set(s => ({ registros: s.registros.filter(r => r.id !== id) })),
       guardarArea: ({ id, ...campos }) =>
-        set((s) =>
+        set(s =>
           id
-            ? { areas: s.areas.map((a) => (a.id === id ? { ...a, ...campos } : a)) }
-            : { areas: [...s.areas, { id: nuevoId(), orden: s.areas.length, ...campos }] },
+            ? {
+                areas: s.areas.map(a =>
+                  a.id === id ? { ...a, ...campos } : a,
+                ),
+              }
+            : {
+                areas: [
+                  ...s.areas,
+                  { id: nuevoId(), orden: s.areas.length, ...campos },
+                ],
+              },
         ),
       guardarActividad: ({ id, ...campos }) =>
-        set((s) =>
+        set(s =>
           id
-            ? { actividades: s.actividades.map((a) => (a.id === id ? { ...a, ...campos } : a)) }
+            ? {
+                actividades: s.actividades.map(a =>
+                  a.id === id ? { ...a, ...campos } : a,
+                ),
+              }
             : { actividades: [...s.actividades, { id: nuevoId(), ...campos }] },
         ),
       moverArea: (id, delta) =>
-        set((s) => {
+        set(s => {
           const lista = [...s.areas].sort((a, b) => a.orden - b.orden);
-          const i = lista.findIndex((a) => a.id === id);
+          const i = lista.findIndex(a => a.id === id);
           const j = i + delta;
           if (i < 0 || j < 0 || j >= lista.length) return {};
           [lista[i], lista[j]] = [lista[j], lista[i]];
           return { areas: lista.map((a, orden) => ({ ...a, orden })) };
         }),
-      reemplazarTodo: (datos) => set({ ...datos, revisiones: datos.revisiones ?? [] }),
-      guardarRevision: (r) => set((s) => ({ revisiones: [...(s.revisiones ?? []).filter((x) => x.semana !== r.semana), r] })),
+      reemplazarTodo: datos =>
+        set({ ...datos, revisiones: datos.revisiones ?? [] }),
+      guardarRevision: r =>
+        set(s => ({
+          revisiones: [
+            ...(s.revisiones ?? []).filter(x => x.semana !== r.semana),
+            r,
+          ],
+        })),
+      aplicarMetas: metas =>
+        set(s => ({
+          actividades: s.actividades.map(a => ({
+            ...a,
+            metaSemanal: metas.find(m => m.actividadId === a.id)?.veces,
+          })),
+        })),
+      guardarEnfoque: (semana, texto) =>
+        set(s => ({ enfoques: { ...s.enfoques, [semana]: texto } })),
       aplicarRevision: (semana, metas) =>
-        set((s) => ({
-          actividades: s.actividades.map((a) => ({ ...a, metaSemanal: metas.find((m) => m.actividadId === a.id)?.veces })),
-          revisiones: (s.revisiones ?? []).map((r) =>
-            r.semana === semana ? { ...r, estado: 'aplicada' as const, aceptadas: metas } : r,
+        set(s => ({
+          actividades: s.actividades.map(a => ({
+            ...a,
+            metaSemanal: metas.find(m => m.actividadId === a.id)?.veces,
+          })),
+          revisiones: (s.revisiones ?? []).map(r =>
+            r.semana === semana
+              ? { ...r, estado: 'aplicada' as const, aceptadas: metas }
+              : r,
           ),
         })),
-      descartarRevision: (semana) =>
-        set((s) => ({
-          revisiones: (s.revisiones ?? []).map((r) => (r.semana === semana ? { ...r, estado: 'descartada' as const } : r)),
+      descartarRevision: semana =>
+        set(s => ({
+          revisiones: (s.revisiones ?? []).map(r =>
+            r.semana === semana ? { ...r, estado: 'descartada' as const } : r,
+          ),
         })),
       // Desde el widget: marca el día, o lo desmarca solo si el registro no tiene nada que perder.
       alternarDia: (actividadId, fecha) =>
-        set((s) => {
-          const delDia = s.registros.filter((r) => r.actividadId === actividadId && r.fecha === fecha);
+        set(s => {
+          const delDia = s.registros.filter(
+            r => r.actividadId === actividadId && r.fecha === fecha,
+          );
           if (!delDia.length) {
-            return { registros: [...s.registros, { id: nuevoId(), actividadId, fecha, creadoEn: Date.now() }] };
+            return {
+              registros: [
+                ...s.registros,
+                { id: nuevoId(), actividadId, fecha, creadoEn: Date.now() },
+              ],
+            };
           }
           const simple = delDia.find(esSimple);
-          return simple ? { registros: s.registros.filter((r) => r !== simple) } : {};
+          return simple
+            ? { registros: s.registros.filter(r => r !== simple) }
+            : {};
         }),
     }),
     {
       name: STORAGE_KEY,
       version: VERSION,
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ areas, actividades, registros, revisiones }) => ({ areas, actividades, registros, revisiones }),
+      partialize: ({
+        areas,
+        actividades,
+        registros,
+        revisiones,
+        enfoques,
+      }) => ({
+        areas,
+        actividades,
+        registros,
+        revisiones,
+        enfoques,
+      }),
     },
   ),
 );
 
 /** Nombres de foto que siguen referenciados (una foto puede compartirse entre registros creados juntos). */
-export const fotosEnUso = (registros: Registro[]) => new Set(registros.flatMap((r) => r.fotos ?? []));
+export const fotosEnUso = (registros: Registro[]) =>
+  new Set(registros.flatMap(r => r.fotos ?? []));
 
 /**
  * Escribe ya el estado al disco. persist guarda sin esperar; el widget corre en
  * una tarea en segundo plano que Android puede cerrar apenas termina.
  */
 export async function guardarAhora(): Promise<void> {
-  const { areas, actividades, registros, revisiones } = useDataStore.getState();
+  const { areas, actividades, registros, revisiones, enfoques } =
+    useDataStore.getState();
   await AsyncStorage.setItem(
     STORAGE_KEY,
-    JSON.stringify({ state: { areas, actividades, registros, revisiones }, version: VERSION }),
+    JSON.stringify({
+      state: { areas, actividades, registros, revisiones, enfoques },
+      version: VERSION,
+    }),
   );
 }

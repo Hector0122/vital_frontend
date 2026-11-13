@@ -1,12 +1,18 @@
 import * as Keychain from 'react-native-keychain';
 import { respaldarEnNube, useNubeStore } from '../src/services/nube';
 
-const fetchMock = jest.fn(async (_url: string, _init?: RequestInit) => ({ ok: true, status: 201 }));
+const fetchMock = jest.fn(async (_url: string, _init?: RequestInit) => ({
+  ok: true,
+  status: 201,
+}));
 
 beforeEach(async () => {
   (globalThis as unknown as { fetch: typeof fetchMock }).fetch = fetchMock;
   fetchMock.mockClear();
-  (Keychain.getGenericPassword as jest.Mock).mockResolvedValue({ username: 'https://w.dev', password: 't' });
+  (Keychain.getGenericPassword as jest.Mock).mockResolvedValue({
+    username: 'https://w.dev',
+    password: 't',
+  });
   await useNubeStore.persist.rehydrate();
 });
 
@@ -15,8 +21,13 @@ test('respalda si nunca se ha hecho, sin fotos y con el token', async () => {
   expect(await respaldarEnNube()).toBe(true);
   const [url, init] = fetchMock.mock.calls[0];
   expect(url).toBe('https://w.dev/respaldo');
-  expect((init!.headers as Record<string, string>).Authorization).toBe('Bearer t');
-  expect(JSON.parse(init!.body as string)).toMatchObject({ app: 'vital', fotos: {} });
+  expect((init!.headers as Record<string, string>).Authorization).toBe(
+    'Bearer t',
+  );
+  expect(JSON.parse(init!.body as string)).toMatchObject({
+    app: 'vital',
+    fotos: {},
+  });
   expect(useNubeStore.getState().ultimoRespaldo).toBeGreaterThan(0);
 });
 

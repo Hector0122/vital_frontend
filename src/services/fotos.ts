@@ -11,7 +11,12 @@ export const fotoUri = (nombre: string) => `file://${DIR_FOTOS}/${nombre}`;
 export async function elegirFoto(desdeCamara: boolean): Promise<string | null> {
   const launcher = desdeCamara ? launchCamera : launchImageLibrary;
   // Reducida: es un recuerdo, no un archivo de fotografía; mantiene ligero el respaldo.
-  const res = await launcher({ mediaType: 'photo', maxWidth: 1600, maxHeight: 1600, quality: 0.7 });
+  const res = await launcher({
+    mediaType: 'photo',
+    maxWidth: 1600,
+    maxHeight: 1600,
+    quality: 0.7,
+  });
   const uri = res.assets?.[0]?.uri;
   if (res.didCancel || res.errorCode || !uri) return null;
   await RNFS.mkdir(DIR_FOTOS);
@@ -25,6 +30,8 @@ export async function borrarFotosHuerfanas(enUso: Set<string>): Promise<void> {
   try {
     if (!(await RNFS.exists(DIR_FOTOS))) return;
     const archivos = await RNFS.readDir(DIR_FOTOS);
-    await Promise.all(archivos.filter((f) => !enUso.has(f.name)).map((f) => RNFS.unlink(f.path)));
+    await Promise.all(
+      archivos.filter(f => !enUso.has(f.name)).map(f => RNFS.unlink(f.path)),
+    );
   } catch {}
 }

@@ -5,6 +5,7 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Button } from '../components/Button';
+import { EnfoqueCard } from '../components/EnfoqueCard';
 import { RegistroItem } from '../components/RegistroItem';
 import { RevisionCard } from '../components/RevisionCard';
 import { Screen } from '../components/Screen';
@@ -61,6 +62,7 @@ export function HomeScreen({ navigation }: Props) {
         <Button title="Registrar actividad" onPress={() => navigation.navigate('Registro')} />
 
         <Text style={styles.section}>Esta semana</Text>
+        <EnfoqueCard />
         {metas.length ? (
           <View style={styles.card}>
             <View style={styles.fila}>

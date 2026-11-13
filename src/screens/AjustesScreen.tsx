@@ -66,6 +66,7 @@ export function AjustesScreen({
           actividades,
           registros: regs,
           revisiones,
+          enfoques,
         } = useDataStore.getState();
         if (
           await exportarRespaldo({
@@ -73,6 +74,7 @@ export function AjustesScreen({
             actividades,
             registros: regs,
             revisiones,
+            enfoques,
           })
         ) {
           Toast.show({ type: 'success', text1: 'Respaldo guardado' });

@@ -18,6 +18,7 @@ export interface EntradaRevision {
   actividades: ActividadSemana[]
   sensaciones: Record<string, number>
   diasConRegistro: number
+  enfoque?: string // lo que la persona dijo que quería priorizar esa semana
 }
 
 export interface Sugerencia {
@@ -58,7 +59,8 @@ export function validarEntrada(body: unknown): EntradaRevision | null {
   for (const [k, v] of Object.entries(b.sensaciones ?? {}).slice(0, 10)) {
     if (corto(k, 30) && entero(v, 0, 100)) sensaciones[corto(k, 30)] = v as number
   }
-  return { actividades, sensaciones, diasConRegistro: b.diasConRegistro! }
+  const enfoque = corto(b.enfoque, 300)
+  return { actividades, sensaciones, diasConRegistro: b.diasConRegistro!, ...(enfoque ? { enfoque } : {}) }
 }
 
 /** Lo que devuelve el modelo no es de fiar: solo pasan ids conocidos, 1–7 veces, máx. 2. */
@@ -71,21 +73,26 @@ export function limpiarSalida(texto: string, entrada: EntradaRevision): SalidaRe
   }
   const analisis = corto(r.analisis, 700)
   if (!analisis) return null
-  const ids = new Set(entrada.actividades.map((a) => a.id))
+  return { analisis, sugerencias: limpiarMetas(r.sugerencias, entrada.actividades, 2) }
+}
+
+/** Solo ids conocidos, sin repetir, 1–7 veces, hasta `max`. */
+export function limpiarMetas(lista: unknown, actividades: { id: string }[], max: number): Sugerencia[] {
+  const ids = new Set(actividades.map((a) => a.id))
   const vistos = new Set<string>()
-  const sugerencias: Sugerencia[] = []
-  for (const s of Array.isArray(r.sugerencias) ? r.sugerencias : []) {
+  const metas: Sugerencia[] = []
+  for (const s of Array.isArray(lista) ? (lista as Record<string, unknown>[]) : []) {
     const id = corto(s?.actividadId, 40)
     if (!ids.has(id) || vistos.has(id) || !entero(s?.veces, 1, 7)) continue
     vistos.add(id)
-    sugerencias.push({ actividadId: id, veces: s.veces, motivo: corto(s?.motivo, 160) })
-    if (sugerencias.length === 2) break
+    metas.push({ actividadId: id, veces: s.veces as number, motivo: corto(s?.motivo, 160) })
+    if (metas.length === max) break
   }
-  return { analisis, sugerencias }
+  return metas
 }
 
 const SISTEMA = `Eres el asistente de Vital, una app de equilibrio personal (no de productividad).
-Recibes cuántas veces la persona hizo cada actividad esta semana (lunes a domingo), cómo se sintió y las metas que tenía.
+Recibes cuántas veces la persona hizo cada actividad esta semana (lunes a domingo), cómo se sintió, las metas que tenía y, si existe, el "enfoque" que se propuso para esa semana (menciónalo con amabilidad y tenlo en cuenta).
 
 Reglas de tono — obligatorias:
 - Español neutro, cálido y breve. Habla de "tú".
@@ -113,8 +120,19 @@ interface GroqResponse {
 export async function revisarConGroq(
   entrada: EntradaRevision,
   apiKey: string | undefined,
-  modelo = 'openai/gpt-oss-120b'
+  modelo?: string
 ): Promise<SalidaRevision | null> {
+  const texto = await llamarGroq(SISTEMA, entrada, apiKey, modelo)
+  return texto ? limpiarSalida(texto, entrada) : null
+}
+
+/** Pide JSON a Groq (mismo patrón que veya_backend/src/ai/ai.service.ts). Devuelve el texto o null. */
+export async function llamarGroq(
+  sistema: string,
+  entrada: unknown,
+  apiKey: string | undefined,
+  modelo = 'openai/gpt-oss-120b'
+): Promise<string | null> {
   if (!apiKey) return null
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -126,7 +144,7 @@ export async function revisarConGroq(
         max_completion_tokens: 800,
         response_format: { type: 'json_object' },
         messages: [
-          { role: 'system', content: SISTEMA },
+          { role: 'system', content: sistema },
           { role: 'user', content: JSON.stringify(entrada) }
         ]
       }),
@@ -134,8 +152,7 @@ export async function revisarConGroq(
     })
     if (!res.ok) return null
     const data = (await res.json()) as GroqResponse
-    const texto = data.choices?.[0]?.message?.content
-    return texto ? limpiarSalida(texto, entrada) : null
+    return data.choices?.[0]?.message?.content?.trim() || null
   } catch {
     return null
   }

@@ -6,11 +6,22 @@ import { colors, iconSize, radius, spacing, type } from '../theme';
 import { formatFecha, parseIso, toIso } from '../utils/fechas';
 
 /** Campo de fecha (versión Android de varo_frontend/src/components/DateField.tsx). */
-export function DateField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+export function DateField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
   const [abierto, setAbierto] = useState(false);
   return (
     <>
-      <Pressable style={styles.field} onPress={() => setAbierto(true)} accessibilityRole="button" accessibilityLabel="Cambiar fecha">
+      <Pressable
+        style={styles.field}
+        onPress={() => setAbierto(true)}
+        accessibilityRole="button"
+        accessibilityLabel="Cambiar fecha"
+      >
         <Text style={styles.text}>{formatFecha(value)}</Text>
         <Icon name="calendar" size={iconSize.sm} color={colors.muted} />
       </Pressable>

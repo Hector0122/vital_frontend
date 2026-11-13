@@ -1,4 +1,5 @@
 import { isAuthorized } from './auth'
+import { enfocarConGroq, validarEnfoque } from './enfoque'
 import { revisarConGroq, validarEntrada } from './revision'
 
 export interface Env {
@@ -23,6 +24,7 @@ const texto = (status: number, body: string) => new Response(body, { status })
  *   DELETE /fotos/:nombre
  *   PUT    /respaldo       (JSON de datos sin fotos; guarda el último + una copia por día)
  *   GET    /respaldo       (el último)
+ *   POST   /enfoque        ("esta semana me quiero enfocar en…" → metas reacomodadas, vía Groq)
  *   POST   /revision       (resumen de la semana → análisis + metas ligeras, vía Groq)
  * Las fotos se escriben con el binding de R2: no hacen falta llaves S3.
  */
@@ -54,6 +56,15 @@ export default {
         env.BUCKET.put(`respaldos/${dia}.json`, cuerpo, opciones)
       ])
       return texto(201, 'ok')
+    }
+
+    if (pathname === '/enfoque') {
+      if (request.method !== 'POST') return texto(405, 'Método no permitido')
+      if (Number(request.headers.get('Content-Length')) > 64 * 1024) return texto(413, 'Demasiado grande')
+      const entrada = validarEnfoque(await request.json().catch(() => null))
+      if (!entrada) return texto(400, 'Enfoque inválido')
+      const salida = await enfocarConGroq(entrada, env.GROQ_API_KEY, env.GROQ_MODEL || undefined)
+      return salida ? Response.json(salida) : texto(502, 'La IA no respondió')
     }
 
     if (pathname === '/revision') {

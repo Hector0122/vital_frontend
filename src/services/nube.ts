@@ -161,7 +161,7 @@ export async function respaldarEnNube(forzar = false): Promise<boolean> {
     return false;
   }
   try {
-    const { areas, actividades, registros, revisiones } =
+    const { areas, actividades, registros, revisiones, enfoques } =
       useDataStore.getState();
     const res = await fetch(`${config.url}/respaldo`, {
       method: 'PUT',
@@ -170,7 +170,10 @@ export async function respaldarEnNube(forzar = false): Promise<boolean> {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(
-        armarRespaldo({ areas, actividades, registros, revisiones }, {}),
+        armarRespaldo(
+          { areas, actividades, registros, revisiones, enfoques },
+          {},
+        ),
       ),
     });
     if (!res.ok) throw new Error(`El Worker respondió ${res.status}`);

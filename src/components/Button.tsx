@@ -1,5 +1,11 @@
 import React from 'react';
-import { Pressable, StyleProp, StyleSheet, Text, ViewStyle } from 'react-native';
+import {
+  Pressable,
+  StyleProp,
+  StyleSheet,
+  Text,
+  ViewStyle,
+} from 'react-native';
 import { colors, radius } from '../theme';
 
 type ButtonVariant = 'primary' | 'danger' | 'ghost';
@@ -16,9 +22,19 @@ interface Props {
  * Botón de arcd_kit (ver arcd_kit/README.md#botones), sin Reanimated: el
  * feedback de press es opacidad, Vital no usa animaciones.
  */
-export function Button({ title, onPress, disabled, variant = 'primary', style }: Props) {
+export function Button({
+  title,
+  onPress,
+  disabled,
+  variant = 'primary',
+  style,
+}: Props) {
   const background =
-    variant === 'primary' ? colors.primary : variant === 'danger' ? colors.danger : 'transparent';
+    variant === 'primary'
+      ? colors.primary
+      : variant === 'danger'
+      ? colors.danger
+      : 'transparent';
   const textColor = variant === 'ghost' ? colors.muted : colors.onPrimary;
 
   return (
