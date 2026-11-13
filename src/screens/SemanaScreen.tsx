@@ -103,21 +103,30 @@ export function SemanaScreen({ navigation }: Props) {
           </View>
         ) : null}
 
-        <Text style={styles.frase}>{frase}</Text>
+        <View style={styles.fraseCard}>
+          <Text style={styles.frase}>{frase}</Text>
+        </View>
 
-        {porArea.map(({ area, actividades: acts }) => (
+        {porArea.map(({ area, veces: total, actividades: acts }) => (
           <View key={area.id} style={styles.card}>
             <View style={styles.cardHeader}>
               <Icon name={area.icono} size={iconSize.sm} color={area.color} />
-              <Text style={styles.cardTitle}>{area.nombre}</Text>
+              <Text style={[styles.cardTitle, styles.flex]}>{area.nombre}</Text>
+              <Text style={styles.muted}>{veces(total)}</Text>
             </View>
             {acts.map(({ actividad, veces: n, minutos }) => (
               <View key={actividad.id} style={styles.fila}>
-                <Text style={styles.body}>{actividad.nombre}</Text>
-                <Text style={styles.muted}>
-                  {veces(n)}
-                  {minutos ? ` · ${formatDuracion(minutos)}` : ''}
+                <Text style={[styles.body, styles.flex]} numberOfLines={1}>
+                  {actividad.nombre}
                 </Text>
+                {/* Un punto por vez: presencia, no progreso. */}
+                <View style={styles.puntosFila} accessibilityLabel={veces(n)}>
+                  {Array.from({ length: Math.min(n, 7) }, (_, k) => (
+                    <View key={k} style={[styles.puntoVez, { backgroundColor: area.color }]} />
+                  ))}
+                  {n > 7 && <Text style={styles.muted}>+{n - 7}</Text>}
+                </View>
+                <Text style={styles.minutos}>{minutos ? formatDuracion(minutos) : ''}</Text>
               </View>
             ))}
           </View>
@@ -149,11 +158,21 @@ const styles = StyleSheet.create({
   puntos: { flexDirection: 'row', gap: 3, height: 8 },
   punto: { width: 8, height: 8, borderRadius: 4 },
   puntoVacio: { borderWidth: 1, borderColor: colors.border },
-  frase: { ...type.body, color: colors.text, marginVertical: spacing.xs },
+  fraseCard: {
+    backgroundColor: colors.primarySoft,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginVertical: spacing.xs,
+  },
+  frase: { ...type.body, fontSize: 17, lineHeight: 24, color: colors.text },
+  flex: { flex: 1 },
+  puntosFila: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  puntoVez: { width: 10, height: 10, borderRadius: 5 },
+  minutos: { ...type.caption, color: colors.muted, width: 64, textAlign: 'right' },
   card: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.sm, gap: spacing.xs },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   cardTitle: { ...type.label, color: colors.text, textTransform: 'uppercase' },
-  fila: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 32 },
+  fila: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 36 },
   body: { ...type.bodySm, color: colors.text },
   muted: { ...type.bodySm, color: colors.muted },
 });

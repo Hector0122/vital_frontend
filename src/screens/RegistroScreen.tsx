@@ -14,7 +14,7 @@ import { borrarFotosHuerfanas, elegirFoto, fotoUri } from '../services/fotos';
 import { sincronizar } from '../services/nube';
 import { fotosEnUso, useDataStore } from '../stores/dataStore';
 import { colors, iconSize, radius, spacing, type } from '../theme';
-import { areasConActividades, DURACIONES, formatDuracion, SENSACIONES } from '../utils/catalogo';
+import { areasConActividades, DURACIONES, formatDuracion, frecuentes, SENSACIONES } from '../utils/catalogo';
 import { hoy } from '../utils/fechas';
 
 type Props = CompositeScreenProps<
@@ -116,6 +116,7 @@ export function RegistroScreen({ navigation, route }: Props) {
 
   const elegidas = seleccion.map((id) => actividades.find((a) => a.id === id)).filter(Boolean);
   const colorDe = (areaId?: string) => areas.find((a) => a.id === areaId)?.color;
+  const masUsadas = frecuentes(registros, actividades);
 
   if (paso === 1) {
     return (
@@ -124,6 +125,24 @@ export function RegistroScreen({ navigation, route }: Props) {
           <Text style={styles.paso}>Paso 1 de 2</Text>
           <Text style={styles.title}>¿Qué hiciste?</Text>
           <Text style={styles.hint}>Puedes elegir varias.</Text>
+
+          {masUsadas.length ? (
+            <View style={styles.section}>
+              <Text style={[styles.label, styles.labelPrimario]}>Frecuentes</Text>
+              <View style={styles.wrap}>
+                {masUsadas.map((a) => (
+                  <Chip
+                    key={a.id}
+                    label={a.nombre}
+                    icono={a.icono}
+                    color={colorDe(a.areaId)}
+                    seleccionado={seleccion.includes(a.id)}
+                    onPress={() => alternar(a.id)}
+                  />
+                ))}
+              </View>
+            </View>
+          ) : null}
 
           {areasConActividades(areas, actividades).map(({ area, actividades: acts }) =>
             acts.length ? (
@@ -185,7 +204,7 @@ export function RegistroScreen({ navigation, route }: Props) {
         <DateField value={fecha} onChange={setFecha} />
 
         <Text style={styles.label}>Duración</Text>
-        <View style={styles.wrap}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filaScroll}>
           {DURACIONES.map((m) => (
             <Chip
               key={m}
@@ -196,20 +215,34 @@ export function RegistroScreen({ navigation, route }: Props) {
           ))}
           <TextInput
             style={[styles.input, styles.minutos]}
-            value={duracion}
+            value={DURACIONES.map(String).includes(duracion) ? '' : duracion}
             onChangeText={(t) => setDuracion(t.replace(/\D/g, ''))}
             keyboardType="number-pad"
-            placeholder="min"
+            placeholder="otro"
             placeholderTextColor={colors.muted}
             accessibilityLabel="Duración en minutos"
           />
-        </View>
+        </ScrollView>
 
-        <Text style={styles.label}>¿Cómo te sentiste?</Text>
-        <View style={styles.wrap}>
-          {SENSACIONES.map(([s, icono]) => (
-            <Chip key={s} label={s} icono={icono} seleccionado={sensacion === s} onPress={() => setSensacion(sensacion === s ? undefined : s)} />
-          ))}
+        <Text style={styles.label}>
+          ¿Cómo te sentiste?{sensacion ? <Text style={styles.sensacionElegida}> · {sensacion}</Text> : null}
+        </Text>
+        <View style={styles.sensaciones}>
+          {SENSACIONES.map(([s, icono]) => {
+            const activa = sensacion === s;
+            return (
+              <Pressable
+                key={s}
+                onPress={() => setSensacion(activa ? undefined : s)}
+                style={[styles.sensacion, activa && styles.sensacionActiva]}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: activa }}
+                accessibilityLabel={s}
+              >
+                <Icon name={icono} size={iconSize.md} color={activa ? colors.primary : colors.muted} />
+              </Pressable>
+            );
+          })}
         </View>
 
         <Text style={styles.label}>Nota</Text>
@@ -295,6 +328,21 @@ const styles = StyleSheet.create({
     ...type.body,
   },
   minutos: { width: 72, textAlign: 'center' },
+  filaScroll: { gap: spacing.xs, alignItems: 'center' },
+  labelPrimario: { color: colors.primary },
+  sensacionElegida: { color: colors.primary },
+  sensaciones: { flexDirection: 'row', justifyContent: 'space-between' },
+  sensacion: {
+    width: 56,
+    height: 48,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  sensacionActiva: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   nota: { minHeight: 88, textAlignVertical: 'top', paddingTop: spacing.xs },
   foto: { width: 72, height: 72, borderRadius: radius.sm },
   quitarFoto: {

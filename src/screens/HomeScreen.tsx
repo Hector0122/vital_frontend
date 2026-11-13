@@ -6,12 +6,13 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Button } from '../components/Button';
 import { RegistroItem } from '../components/RegistroItem';
+import { RevisionCard } from '../components/RevisionCard';
 import { Screen } from '../components/Screen';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { useDataStore } from '../stores/dataStore';
 import { colors, iconSize, radius, spacing, type } from '../theme';
 import { semantic } from '../theme/tokens';
-import { hoy } from '../utils/fechas';
+import { formatFecha, hoy } from '../utils/fechas';
 import { modeloWidget } from '../widget/modelo';
 
 type Props = CompositeScreenProps<
@@ -20,15 +21,24 @@ type Props = CompositeScreenProps<
 >;
 
 const VERDE = semantic.success.dark;
+const capitalizar = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 const INICIALES = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
 export function HomeScreen({ navigation }: Props) {
   const datos = useDataStore();
-  const { areas, actividades, registros, alternarDia } = datos;
+  const { areas, actividades, registros, alternarDia, revisiones } = datos;
+  const revision = revisiones?.find((r) => r.estado === 'pendiente');
   const metas = modeloWidget(datos, hoy());
   const recientes = [...registros]
     .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.creadoEn - a.creadoEn)
-    .slice(0, 5);
+    .slice(0, 8);
+  // Agrupados por día, en el orden en que ya vienen (más reciente primero).
+  const porDia: [string, typeof recientes][] = [];
+  for (const r of recientes) {
+    const ultimo = porDia[porDia.length - 1];
+    if (ultimo?.[0] === r.fecha) ultimo[1].push(r);
+    else porDia.push([r.fecha, [r]]);
+  }
 
   return (
     <Screen>
@@ -45,6 +55,8 @@ export function HomeScreen({ navigation }: Props) {
           </Pressable>
         </View>
         <Text style={styles.mensaje}>No tienes que hacerlo todo hoy.</Text>
+
+        {revision && <RevisionCard key={revision.semana} revision={revision} />}
 
         <Button title="Registrar actividad" onPress={() => navigation.navigate('Registro')} />
 
@@ -110,19 +122,25 @@ export function HomeScreen({ navigation }: Props) {
         )}
 
         <Text style={styles.section}>Recientes</Text>
-        {recientes.length ? (
-          recientes.map((r) => {
-            const actividad = actividades.find((a) => a.id === r.actividadId);
-            return (
-              <RegistroItem
-                key={r.id}
-                registro={r}
-                actividad={actividad}
-                area={areas.find((a) => a.id === actividad?.areaId)}
-                onPress={() => navigation.navigate('Registro', { registroId: r.id })}
-              />
-            );
-          })
+        {porDia.length ? (
+          porDia.map(([fecha, regs]) => (
+            <View key={fecha}>
+              <Text style={styles.dia}>{capitalizar(formatFecha(fecha, { weekday: 'long', day: 'numeric', month: 'short' }))}</Text>
+              {regs.map((r) => {
+                const actividad = actividades.find((a) => a.id === r.actividadId);
+                return (
+                  <RegistroItem
+                    key={r.id}
+                    registro={r}
+                    actividad={actividad}
+                    area={areas.find((a) => a.id === actividad?.areaId)}
+                    onPress={() => navigation.navigate('Registro', { registroId: r.id })}
+                    sinFecha
+                  />
+                );
+              })}
+            </View>
+          ))
         ) : (
           <Text style={styles.vacio}>Aún no hay registros. Cuando hagas algo que te importe, anótalo aquí.</Text>
         )}
@@ -161,5 +179,6 @@ const styles = StyleSheet.create({
   check: { fontSize: 18, lineHeight: 22, fontWeight: '700', color: VERDE },
   body: { ...type.bodySm, color: colors.text },
   link: { ...type.label, color: colors.primary },
+  dia: { ...type.label, color: colors.muted, textTransform: 'uppercase', marginTop: spacing.xs },
   vacio: { ...type.bodySm, color: colors.muted },
 });

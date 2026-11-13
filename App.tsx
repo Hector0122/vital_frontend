@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { alHidratar, sincronizar } from './src/services/nube';
+import { generarRevisionSiFalta } from './src/services/revision';
 import { checkForUpdate } from './src/services/updates';
 import { useDataStore } from './src/stores/dataStore';
 import { actualizarWidget } from './src/widget/widgetTaskHandler';
@@ -18,12 +19,13 @@ function App() {
     alHidratar(() => {
       sincronizar();
       actualizarWidget();
+      generarRevisionSiFalta();
     });
     // Cualquier cambio en la app se refleja en el widget.
     const quitarSub = useDataStore.subscribe(() => actualizarWidget());
     // Al volver a la app: recargar por si se marcó algo desde el widget.
     const quitarAppState = AppState.addEventListener('change', (estado) => {
-      if (estado === 'active') useDataStore.persist.rehydrate();
+      if (estado === 'active') useDataStore.persist.rehydrate()?.then(() => generarRevisionSiFalta());
     });
     return () => {
       quitarSub();

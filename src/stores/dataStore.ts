@@ -34,10 +34,26 @@ export interface Registro {
   creadoEn: number;
 }
 
+export interface Sugerencia {
+  actividadId: string;
+  veces: number;
+  motivo: string;
+}
+
+/** Revisión de una semana (lunes a domingo): análisis + metas ligeras propuestas. */
+export interface Revision {
+  semana: string; // lunes 'YYYY-MM-DD'
+  analisis: string;
+  sugerencias: Sugerencia[];
+  fuente: 'ia' | 'reglas';
+  estado: 'pendiente' | 'aplicada' | 'descartada';
+}
+
 export interface Datos {
   areas: Area[];
   actividades: Actividad[];
   registros: Registro[];
+  revisiones?: Revision[]; // opcional: respaldos anteriores no la traen
 }
 
 export type CamposRegistro = Pick<Registro, 'fecha' | 'duracionMin' | 'nota' | 'sensacion' | 'fotos'>;
@@ -51,6 +67,10 @@ interface DataState extends Datos {
   moverArea: (id: string, delta: -1 | 1) => void;
   reemplazarTodo: (datos: Datos) => void;
   alternarDia: (actividadId: string, fecha: string) => void;
+  guardarRevision: (r: Revision) => void;
+  /** Las metas aceptadas pasan a ser las metas de la semana; las demás se quitan. */
+  aplicarRevision: (semana: string, metas: { actividadId: string; veces: number }[]) => void;
+  descartarRevision: (semana: string) => void;
 }
 
 export const nuevoId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -74,7 +94,7 @@ export function datosIniciales(): Datos {
     areas.push({ id: areaId, nombre, icono, color: areaHues[i % areaHues.length], orden: i, activo: true });
     acts.forEach(([n, ic], j) => actividades.push({ id: `a${i}-${j}`, areaId, nombre: n, icono: ic, activo: true }));
   });
-  return { areas, actividades, registros: [] };
+  return { areas, actividades, registros: [], revisiones: [] };
 }
 
 const STORAGE_KEY = 'vital-datos';
@@ -115,7 +135,17 @@ export const useDataStore = create<DataState>()(
           [lista[i], lista[j]] = [lista[j], lista[i]];
           return { areas: lista.map((a, orden) => ({ ...a, orden })) };
         }),
-      reemplazarTodo: (datos) => set(datos),
+      reemplazarTodo: (datos) => set({ ...datos, revisiones: datos.revisiones ?? [] }),
+      guardarRevision: (r) => set((s) => ({ revisiones: [...(s.revisiones ?? []).filter((x) => x.semana !== r.semana), r] })),
+      aplicarRevision: (semana, metas) =>
+        set((s) => ({
+          actividades: s.actividades.map((a) => ({ ...a, metaSemanal: metas.find((m) => m.actividadId === a.id)?.veces })),
+          revisiones: (s.revisiones ?? []).map((r) => (r.semana === semana ? { ...r, estado: 'aplicada' as const } : r)),
+        })),
+      descartarRevision: (semana) =>
+        set((s) => ({
+          revisiones: (s.revisiones ?? []).map((r) => (r.semana === semana ? { ...r, estado: 'descartada' as const } : r)),
+        })),
       // Desde el widget: marca el día, o lo desmarca solo si el registro no tiene nada que perder.
       alternarDia: (actividadId, fecha) =>
         set((s) => {
@@ -131,7 +161,7 @@ export const useDataStore = create<DataState>()(
       name: STORAGE_KEY,
       version: VERSION,
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ areas, actividades, registros }) => ({ areas, actividades, registros }),
+      partialize: ({ areas, actividades, registros, revisiones }) => ({ areas, actividades, registros, revisiones }),
     },
   ),
 );
@@ -144,6 +174,9 @@ export const fotosEnUso = (registros: Registro[]) => new Set(registros.flatMap((
  * una tarea en segundo plano que Android puede cerrar apenas termina.
  */
 export async function guardarAhora(): Promise<void> {
-  const { areas, actividades, registros } = useDataStore.getState();
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ state: { areas, actividades, registros }, version: VERSION }));
+  const { areas, actividades, registros, revisiones } = useDataStore.getState();
+  await AsyncStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ state: { areas, actividades, registros, revisiones }, version: VERSION }),
+  );
 }

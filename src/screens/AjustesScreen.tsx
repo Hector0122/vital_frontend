@@ -37,8 +37,8 @@ export function AjustesScreen({ navigation }: NativeStackScreenProps<RootStackPa
   const exportar = () =>
     conOcupado(async () => {
       try {
-        const { areas, actividades, registros: regs } = useDataStore.getState();
-        if (await exportarRespaldo({ areas, actividades, registros: regs })) {
+        const { areas, actividades, registros: regs, revisiones } = useDataStore.getState();
+        if (await exportarRespaldo({ areas, actividades, registros: regs, revisiones })) {
           Toast.show({ type: 'success', text1: 'Respaldo guardado' });
         }
       } catch (e) {
@@ -120,7 +120,7 @@ export function AjustesScreen({ navigation }: NativeStackScreenProps<RootStackPa
       <Button title="Exportar respaldo" onPress={exportar} disabled={ocupado} />
       <Button title="Restaurar respaldo" variant="ghost" onPress={restaurar} disabled={ocupado} />
 
-      <Text style={[styles.section, styles.separado]}>Fotos en la nube</Text>
+      <Text style={[styles.section, styles.separado]}>Nube e IA</Text>
       {nubeUrl ? (
         <>
           <Text style={styles.body}>
@@ -133,8 +133,9 @@ export function AjustesScreen({ navigation }: NativeStackScreenProps<RootStackPa
       ) : (
         <>
           <Text style={styles.body}>
-            Opcional: una copia de tus fotos en tu bucket de R2 (ver cloud-worker/README.md). El token se guarda
-            cifrado en este teléfono.
+            Opcional: conecta tu Worker (ver cloud-worker/README.md) para guardar copia de tus fotos en R2 y recibir
+            la revisión semanal con IA. Sin conexión, la revisión se hace con reglas en el teléfono. El token se
+            guarda cifrado aquí.
           </Text>
           <TextInput
             style={styles.input}

@@ -23,5 +23,8 @@ export function diasDeSemana(fecha: string, offset = 0): string[] {
 
 export function formatFecha(fecha: string, opts: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' }): string {
   if (fecha === hoy()) return 'Hoy';
+  const ayer = new Date();
+  ayer.setDate(ayer.getDate() - 1);
+  if (fecha === toIso(ayer)) return 'Ayer';
   return parseIso(fecha).toLocaleDateString('es-MX', opts);
 }

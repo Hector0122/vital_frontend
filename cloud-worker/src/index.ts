@@ -1,8 +1,11 @@
 import { isAuthorized } from './auth'
+import { revisarConGroq, validarEntrada } from './revision'
 
 export interface Env {
   BUCKET: R2Bucket
   API_TOKEN?: string
+  GROQ_API_KEY?: string
+  GROQ_MODEL?: string
 }
 
 // Mismo formato que los nombres que genera la app (src/services/fotos.ts).
@@ -17,6 +20,7 @@ const texto = (status: number, body: string) => new Response(body, { status })
  *   PUT    /fotos/:nombre   (cuerpo = jpeg)
  *   GET    /fotos/:nombre
  *   DELETE /fotos/:nombre
+ *   POST   /revision       (resumen de la semana → análisis + metas ligeras, vía Groq)
  * Las fotos se escriben con el binding de R2: no hacen falta llaves S3.
  */
 export default {
@@ -24,6 +28,15 @@ export default {
     const { pathname } = new URL(request.url)
     if (pathname === '/health') return Response.json({ ok: true })
     if (!(await isAuthorized(request, env.API_TOKEN))) return texto(401, 'No autorizado')
+
+    if (pathname === '/revision') {
+      if (request.method !== 'POST') return texto(405, 'Método no permitido')
+      if (Number(request.headers.get('Content-Length')) > 64 * 1024) return texto(413, 'Demasiado grande')
+      const entrada = validarEntrada(await request.json().catch(() => null))
+      if (!entrada) return texto(400, 'Resumen inválido')
+      const salida = await revisarConGroq(entrada, env.GROQ_API_KEY, env.GROQ_MODEL || undefined)
+      return salida ? Response.json(salida) : texto(502, 'La IA no respondió')
+    }
 
     const match = /^\/fotos\/([^/]+)$/.exec(pathname)
     if (!match || !NOMBRE_FOTO.test(match[1])) return texto(404, 'No encontrado')

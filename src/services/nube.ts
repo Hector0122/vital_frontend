@@ -16,9 +16,14 @@ export interface ConfigNube {
   token: string;
 }
 
+/** Sin configurar o sin Keychain disponible = sin nube; nunca debe tumbar la app. */
 export async function leerConfig(): Promise<ConfigNube | null> {
-  const c = await Keychain.getGenericPassword({ service: SERVICE });
-  return c ? { url: c.username, token: c.password } : null;
+  try {
+    const c = await Keychain.getGenericPassword({ service: SERVICE });
+    return c ? { url: c.username, token: c.password } : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Valida contra el Worker antes de guardar: un token equivocado da 401, uno bueno 404 (foto inexistente). */
