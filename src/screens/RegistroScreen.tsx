@@ -1,13 +1,15 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, BackHandler, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Button } from '../components/Button';
 import { Chip } from '../components/Chip';
 import { DateField } from '../components/DateField';
 import { Screen } from '../components/Screen';
-import type { MainTabParamList } from '../navigation/types';
+import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { borrarFotosHuerfanas, elegirFoto, fotoUri } from '../services/fotos';
 import { sincronizar } from '../services/nube';
 import { fotosEnUso, useDataStore } from '../stores/dataStore';
@@ -15,13 +17,18 @@ import { colors, iconSize, radius, spacing, type } from '../theme';
 import { areasConActividades, DURACIONES, formatDuracion, SENSACIONES } from '../utils/catalogo';
 import { hoy } from '../utils/fechas';
 
-type Props = BottomTabScreenProps<MainTabParamList, 'Registro'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<MainTabParamList, 'Registro'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
 
+/** Dos pasos: 1) qué hiciste, 2) detalles opcionales. Editar entra directo al paso 2. */
 export function RegistroScreen({ navigation, route }: Props) {
   const { registroId, actividadId } = route.params ?? {};
   const { areas, actividades, registros, agregarRegistros, editarRegistro, borrarRegistro } = useDataStore();
   const editando = registros.find((r) => r.id === registroId);
 
+  const [paso, setPaso] = useState<1 | 2>(1);
   const [seleccion, setSeleccion] = useState<string[]>([]);
   const [fecha, setFecha] = useState(hoy());
   const [duracion, setDuracion] = useState('');
@@ -29,18 +36,34 @@ export function RegistroScreen({ navigation, route }: Props) {
   const [sensacion, setSensacion] = useState<string>();
   const [fotos, setFotos] = useState<string[]>([]);
 
-  // Reinicia el formulario cada vez que cambia lo que se pide (nuevo / editar / preseleccionado).
+  const reiniciar = (e = editando, preseleccion = actividadId) => {
+    setSeleccion(e ? [e.actividadId] : preseleccion ? [preseleccion] : []);
+    setPaso(e || preseleccion ? 2 : 1);
+    setFecha(e?.fecha ?? hoy());
+    setDuracion(e?.duracionMin ? String(e.duracionMin) : '');
+    setNota(e?.nota ?? '');
+    setSensacion(e?.sensacion);
+    setFotos(e?.fotos ?? []);
+  };
+
+  // Cada vez que cambia lo que se pide (nuevo / editar / preseleccionado).
   useEffect(() => {
-    setSeleccion(editando ? [editando.actividadId] : actividadId ? [actividadId] : []);
-    setFecha(editando?.fecha ?? hoy());
-    setDuracion(editando?.duracionMin ? String(editando.duracionMin) : '');
-    setNota(editando?.nota ?? '');
-    setSensacion(editando?.sensacion);
-    setFotos(editando?.fotos ?? []);
+    reiniciar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [registroId, actividadId]);
 
+  // El botón atrás de Android en el paso 2 vuelve al paso 1.
+  useEffect(() => {
+    if (paso !== 2 || editando) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setPaso(1);
+      return true;
+    });
+    return () => sub.remove();
+  }, [paso, editando]);
+
   const salir = () => {
+    reiniciar(undefined, undefined);
     navigation.setParams({ registroId: undefined, actividadId: undefined });
     navigation.navigate('Inicio');
   };
@@ -91,38 +114,77 @@ export function RegistroScreen({ navigation, route }: Props) {
       },
     ]);
 
+  const elegidas = seleccion.map((id) => actividades.find((a) => a.id === id)).filter(Boolean);
+  const colorDe = (areaId?: string) => areas.find((a) => a.id === areaId)?.color;
+
+  if (paso === 1) {
+    return (
+      <Screen>
+        <ScrollView contentContainerStyle={styles.content}>
+          <Text style={styles.paso}>Paso 1 de 2</Text>
+          <Text style={styles.title}>¿Qué hiciste?</Text>
+          <Text style={styles.hint}>Puedes elegir varias.</Text>
+
+          {areasConActividades(areas, actividades).map(({ area, actividades: acts }) =>
+            acts.length ? (
+              <View key={area.id} style={styles.section}>
+                <Text style={[styles.label, { color: area.color }]}>{area.nombre}</Text>
+                <View style={styles.wrap}>
+                  {acts.map((a) => (
+                    <Chip
+                      key={a.id}
+                      label={a.nombre}
+                      icono={a.icono}
+                      color={area.color}
+                      seleccionado={seleccion.includes(a.id)}
+                      onPress={() => alternar(a.id)}
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : null,
+          )}
+
+          <Pressable style={styles.link} onPress={() => navigation.navigate('Areas')} accessibilityRole="button">
+            <Icon name="pencil-outline" size={iconSize.sm} color={colors.muted} />
+            <Text style={styles.linkText}>Editar áreas y actividades</Text>
+          </Pressable>
+        </ScrollView>
+        <View style={styles.pie}>
+          <Button
+            title={seleccion.length > 1 ? `Continuar (${seleccion.length})` : 'Continuar'}
+            onPress={() => setPaso(2)}
+            disabled={!seleccion.length}
+          />
+          {editando && <Button title="Cancelar" variant="ghost" onPress={salir} />}
+        </View>
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>{editando ? 'Editar registro' : 'Registrar'}</Text>
-        <Text style={styles.hint}>
-          {editando ? 'Cambia lo que necesites.' : 'Elige una o varias cosas que hiciste. Todo lo demás es opcional.'}
-        </Text>
+        {!editando && <Text style={styles.paso}>Paso 2 de 2</Text>}
+        <Text style={styles.title}>{editando ? 'Editar registro' : 'Detalles'}</Text>
+        {!editando && <Text style={styles.hint}>Todo es opcional. Puedes registrar ya.</Text>}
 
-        {areasConActividades(areas, actividades).map(({ area, actividades: acts }) =>
-          acts.length ? (
-            <View key={area.id} style={styles.section}>
-              <Text style={[styles.label, { color: area.color }]}>{area.nombre}</Text>
-              <View style={styles.wrap}>
-                {acts.map((a) => (
-                  <Chip
-                    key={a.id}
-                    label={a.nombre}
-                    icono={a.icono}
-                    color={area.color}
-                    seleccionado={seleccion.includes(a.id)}
-                    onPress={() => alternar(a.id)}
-                  />
-                ))}
+        <Pressable style={styles.resumen} onPress={() => setPaso(1)} accessibilityRole="button" accessibilityHint="Cambiar actividades">
+          <View style={[styles.wrap, styles.flex]}>
+            {elegidas.map((a) => (
+              <View key={a!.id} style={styles.elegida}>
+                <Icon name={a!.icono} size={iconSize.sm} color={colorDe(a!.areaId) ?? colors.primary} />
+                <Text style={styles.elegidaText}>{a!.nombre}</Text>
               </View>
-            </View>
-          ) : null,
-        )}
+            ))}
+          </View>
+          <Text style={styles.cambiar}>Cambiar</Text>
+        </Pressable>
 
         <Text style={styles.label}>Fecha</Text>
         <DateField value={fecha} onChange={setFecha} />
 
-        <Text style={styles.label}>Duración (opcional)</Text>
+        <Text style={styles.label}>Duración</Text>
         <View style={styles.wrap}>
           {DURACIONES.map((m) => (
             <Chip
@@ -143,14 +205,14 @@ export function RegistroScreen({ navigation, route }: Props) {
           />
         </View>
 
-        <Text style={styles.label}>¿Cómo te sentiste? (opcional)</Text>
+        <Text style={styles.label}>¿Cómo te sentiste?</Text>
         <View style={styles.wrap}>
           {SENSACIONES.map(([s, icono]) => (
             <Chip key={s} label={s} icono={icono} seleccionado={sensacion === s} onPress={() => setSensacion(sensacion === s ? undefined : s)} />
           ))}
         </View>
 
-        <Text style={styles.label}>Nota (opcional)</Text>
+        <Text style={styles.label}>Nota</Text>
         <TextInput
           style={[styles.input, styles.nota]}
           value={nota}
@@ -160,7 +222,7 @@ export function RegistroScreen({ navigation, route }: Props) {
           placeholderTextColor={colors.muted}
         />
 
-        <Text style={styles.label}>Fotos (opcional)</Text>
+        <Text style={styles.label}>Fotos</Text>
         <View style={styles.wrap}>
           {fotos.map((f) => (
             <View key={f}>
@@ -179,26 +241,50 @@ export function RegistroScreen({ navigation, route }: Props) {
           <Chip label="Galería" icono="image-outline" onPress={() => agregarFoto(false)} />
         </View>
 
+        {editando && <Button title="Borrar registro" variant="ghost" onPress={borrar} style={styles.borrar} />}
+      </ScrollView>
+      <View style={styles.pie}>
         <Button
           title={editando ? 'Guardar cambios' : seleccion.length > 1 ? `Registrar ${seleccion.length}` : 'Registrar'}
           onPress={guardar}
           disabled={!seleccion.length}
-          style={styles.guardar}
         />
-        {editando && <Button title="Borrar registro" variant="ghost" onPress={borrar} />}
-        {(editando || actividadId) && <Button title="Cancelar" variant="ghost" onPress={salir} />}
-      </ScrollView>
+        <Button title={editando ? 'Cancelar' : 'Atrás'} variant="ghost" onPress={editando ? salir : () => setPaso(1)} />
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.md, paddingBottom: spacing.huge, gap: spacing.xs },
+  content: { padding: spacing.md, paddingBottom: spacing.xl, gap: spacing.xs },
+  paso: { ...type.label, color: colors.primary, textTransform: 'uppercase' },
   title: { ...type.h1, color: colors.text },
   hint: { ...type.bodySm, color: colors.muted, marginBottom: spacing.xs },
   section: { gap: spacing.xs },
   label: { ...type.label, color: colors.muted, marginTop: spacing.sm, textTransform: 'uppercase' },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, alignItems: 'center' },
+  flex: { flex: 1 },
+  link: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, minHeight: 48, marginTop: spacing.md },
+  linkText: { ...type.bodySm, color: colors.muted, textDecorationLine: 'underline' },
+  pie: {
+    padding: spacing.md,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  resumen: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    minHeight: 56,
+  },
+  elegida: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  elegidaText: { ...type.body, color: colors.text },
+  cambiar: { ...type.label, color: colors.primary },
   input: {
     minHeight: 44,
     borderWidth: 1,
@@ -219,5 +305,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     padding: 2,
   },
-  guardar: { marginTop: spacing.lg },
+  borrar: { marginTop: spacing.lg },
 });
