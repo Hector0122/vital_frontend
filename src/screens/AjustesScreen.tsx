@@ -1,6 +1,15 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
+import {
+  Alert,
+  Linking,
+  PermissionsAndroid,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+} from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Button } from '../components/Button';
 import type { RootStackParamList } from '../navigation/types';
@@ -171,6 +180,31 @@ export function AjustesScreen({
       ],
     );
 
+  // El aviso lo programa Android (AvisoDomingo.kt); aquí solo se pide el permiso.
+  const activarAviso = async () => {
+    if (Platform.OS === 'android' && Number(Platform.Version) >= 33) {
+      const r = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+      );
+      if (r !== PermissionsAndroid.RESULTS.GRANTED) {
+        Alert.alert(
+          'Aviso apagado',
+          'Puedes activarlo cuando quieras en los ajustes de Android.',
+          [
+            { text: 'Ahora no', style: 'cancel' },
+            { text: 'Abrir ajustes', onPress: () => Linking.openSettings() },
+          ],
+        );
+        return;
+      }
+    }
+    Toast.show({
+      type: 'success',
+      text1: 'Aviso activado',
+      text2: 'Domingos a las 7 de la noche',
+    });
+  };
+
   const quitarNube = () =>
     Alert.alert(
       '¿Desconectar la nube?',
@@ -200,6 +234,19 @@ export function AjustesScreen({
         title="Áreas y actividades"
         variant="ghost"
         onPress={() => navigation.navigate('Areas')}
+      />
+
+      <Text style={[styles.section, styles.separado]}>Aviso del domingo</Text>
+      <Text style={styles.body}>
+        Un solo aviso a la semana, el domingo a las 7 de la noche, cuando tu
+        semana está lista para revisar. Para quitarlo, apaga las notificaciones
+        de Vital en los ajustes de Android.
+      </Text>
+      <Button title="Activar aviso" variant="ghost" onPress={activarAviso} />
+      <Button
+        title="Ajustes de notificaciones"
+        variant="ghost"
+        onPress={() => Linking.openSettings()}
       />
 
       <Text style={[styles.section, styles.separado]}>Respaldo</Text>
