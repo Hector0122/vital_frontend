@@ -16,6 +16,7 @@ export async function elegirFoto(desdeCamara: boolean): Promise<string | null> {
     maxWidth: 1600,
     maxHeight: 1600,
     quality: 0.7,
+    saveToPhotos: desdeCamara, // las de cámara también quedan en tu galería
   });
   const uri = res.assets?.[0]?.uri;
   if (res.didCancel || res.errorCode || !uri) return null;

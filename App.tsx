@@ -24,9 +24,15 @@ function App() {
     });
     // Cualquier cambio en la app se refleja en el widget.
     const quitarSub = useDataStore.subscribe(() => actualizarWidget());
-    // Al volver a la app: recargar por si se marcó algo desde el widget.
+    // Al volver a la app: recargar por si se marcó algo desde el widget y subir lo pendiente
+    // (lo más cerca de "subir al agarrar wifi" sin un servicio en segundo plano).
     const quitarAppState = AppState.addEventListener('change', (estado) => {
-      if (estado === 'active') useDataStore.persist.rehydrate()?.then(() => generarRevisionSiFalta());
+      if (estado !== 'active') return;
+      useDataStore.persist.rehydrate()?.then(() => {
+        generarRevisionSiFalta();
+        sincronizar();
+        respaldarEnNube();
+      });
     });
     return () => {
       quitarSub();
