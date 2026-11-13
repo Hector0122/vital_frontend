@@ -21,13 +21,15 @@ type Props = CompositeScreenProps<
 const INICIALES = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
 export function SemanaScreen({ navigation }: Props) {
-  const { areas, actividades, registros } = useDataStore();
+  const { areas, actividades, registros, revisiones } = useDataStore();
   const [offset, setOffset] = useState(0); // 0 = esta semana, -1 = la anterior…
   const [diaElegido, setDiaElegido] = useState<string>();
 
   const dias = diasDeSemana(hoy(), offset);
   const { porDia, porArea, frase } = resumenSemana(registros, actividades, areas, dias);
   const dia = diaElegido && dias.includes(diaElegido) ? diaElegido : undefined;
+  // La pendiente se muestra en Inicio; aquí queda el historial.
+  const revision = revisiones?.find((r) => r.semana === dias[0] && r.estado !== 'pendiente');
 
   const actividadDe = (id: string) => actividades.find((a) => a.id === id);
   const areaDe = (areaId?: string) => areas.find((a) => a.id === areaId);
@@ -111,6 +113,25 @@ export function SemanaScreen({ navigation }: Props) {
         <View style={styles.fraseCard}>
           <Text style={styles.frase}>{frase}</Text>
         </View>
+
+        {revision && (
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Icon name="weather-sunset" size={iconSize.sm} color={colors.primary} />
+              <Text style={[styles.cardTitle, styles.flex]}>Cómo te fue</Text>
+              {revision.fuente === 'ia' && <Text style={styles.muted}>IA</Text>}
+            </View>
+            <Text style={styles.body}>{revision.analisis}</Text>
+            {revision.aceptadas?.length ? (
+              <Text style={styles.muted}>
+                Metas que elegiste:{' '}
+                {revision.aceptadas
+                  .map((m) => `${actividadDe(m.actividadId)?.nombre ?? 'actividad'} ${m.veces}×`)
+                  .join(', ')}
+              </Text>
+            ) : null}
+          </View>
+        )}
 
         {porArea.map(({ area, veces: total, actividades: acts }) => (
           <View key={area.id} style={styles.card}>

@@ -47,6 +47,7 @@ export interface Revision {
   sugerencias: Sugerencia[];
   fuente: 'ia' | 'reglas';
   estado: 'pendiente' | 'aplicada' | 'descartada';
+  aceptadas?: { actividadId: string; veces: number }[]; // lo que elegiste, para el historial
 }
 
 export interface Datos {
@@ -140,7 +141,9 @@ export const useDataStore = create<DataState>()(
       aplicarRevision: (semana, metas) =>
         set((s) => ({
           actividades: s.actividades.map((a) => ({ ...a, metaSemanal: metas.find((m) => m.actividadId === a.id)?.veces })),
-          revisiones: (s.revisiones ?? []).map((r) => (r.semana === semana ? { ...r, estado: 'aplicada' as const } : r)),
+          revisiones: (s.revisiones ?? []).map((r) =>
+            r.semana === semana ? { ...r, estado: 'aplicada' as const, aceptadas: metas } : r,
+          ),
         })),
       descartarRevision: (semana) =>
         set((s) => ({

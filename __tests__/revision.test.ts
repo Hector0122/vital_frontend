@@ -63,5 +63,5 @@ test('aplicar revisión: las aceptadas son las nuevas metas y las demás se quit
   const st = useDataStore.getState();
   expect(st.actividades.find((a) => a.id === 'a0-0')!.metaSemanal).toBe(3);
   expect(st.actividades.find((a) => a.id === 'a1-0')!.metaSemanal).toBeUndefined();
-  expect(st.revisiones![0].estado).toBe('aplicada');
+  expect(st.revisiones![0]).toMatchObject({ estado: 'aplicada', aceptadas: [{ actividadId: 'a0-0', veces: 3 }] });
 });
