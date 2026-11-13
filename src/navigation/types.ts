@@ -10,4 +10,5 @@ export type MainTabParamList = {
 export type RootStackParamList = {
   Main: NavigatorScreenParams<MainTabParamList>;
   Ajustes: undefined;
+  Areas: undefined;
 };

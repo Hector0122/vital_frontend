@@ -1,13 +1,15 @@
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Button } from '../components/Button';
+import type { RootStackParamList } from '../navigation/types';
 import { exportarRespaldo, importarRespaldo } from '../services/backup';
 import { borrarFotosHuerfanas } from '../services/fotos';
 import { fotosEnUso, useDataStore } from '../stores/dataStore';
 import { colors, spacing, type } from '../theme';
 
-export function AjustesScreen() {
+export function AjustesScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Ajustes'>) {
   const [ocupado, setOcupado] = useState(false);
 
   const exportar = async () => {
@@ -52,7 +54,11 @@ export function AjustesScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.section}>Respaldo</Text>
+      <Text style={styles.section}>Tus áreas</Text>
+      <Text style={styles.body}>Crea, edita, reordena u oculta áreas y actividades.</Text>
+      <Button title="Áreas y actividades" variant="ghost" onPress={() => navigation.navigate('Areas')} />
+
+      <Text style={[styles.section, styles.separado]}>Respaldo</Text>
       <Text style={styles.body}>
         Tus datos viven solo en este teléfono. Guarda de vez en cuando un respaldo (registros, notas y fotos) en
         Descargas o en Drive para no perderlos si cambias de teléfono.
@@ -66,5 +72,6 @@ export function AjustesScreen() {
 const styles = StyleSheet.create({
   content: { padding: spacing.md, gap: spacing.sm, backgroundColor: colors.background, flexGrow: 1 },
   section: { ...type.h2, color: colors.text },
+  separado: { marginTop: spacing.lg },
   body: { ...type.bodySm, color: colors.muted, marginBottom: spacing.xs },
 });

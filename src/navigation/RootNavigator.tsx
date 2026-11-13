@@ -2,6 +2,7 @@ import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import { AjustesScreen } from '../screens/AjustesScreen';
+import { AreasScreen } from '../screens/AreasScreen';
 import { colors } from '../theme';
 import { MainTabNavigator } from './MainTabNavigator';
 import type { RootStackParamList } from './types';
@@ -19,6 +20,7 @@ export function RootNavigator() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Main" component={MainTabNavigator} />
         <Stack.Screen name="Ajustes" component={AjustesScreen} options={{ headerShown: true, title: 'Ajustes' }} />
+        <Stack.Screen name="Areas" component={AreasScreen} options={{ headerShown: true, title: 'Áreas y actividades' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
