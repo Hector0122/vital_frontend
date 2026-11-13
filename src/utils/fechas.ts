@@ -28,3 +28,21 @@ export function formatFecha(fecha: string, opts: Intl.DateTimeFormatOptions = { 
   if (fecha === toIso(ayer)) return 'Ayer';
   return parseIso(fecha).toLocaleDateString('es-MX', opts);
 }
+
+/** Celdas de un mes para una cuadrícula lunes–domingo: null = hueco antes del día 1. */
+export function celdasDelMes(anio: number, mes: number): (string | null)[] {
+  const primero = new Date(anio, mes, 1);
+  const huecos = (primero.getDay() + 6) % 7;
+  const total = new Date(anio, mes + 1, 0).getDate();
+  return [
+    ...Array<null>(huecos).fill(null),
+    ...Array.from({ length: total }, (_, i) => toIso(new Date(anio, mes, i + 1))),
+  ];
+}
+
+/** Cuántas semanas hay entre la semana de `fecha` y la de `hoy` (negativo = pasado). */
+export function offsetSemanas(fecha: string, hoyIso: string): number {
+  const a = parseIso(diasDeSemana(fecha)[0]).getTime();
+  const b = parseIso(diasDeSemana(hoyIso)[0]).getTime();
+  return Math.round((a - b) / (7 * 24 * 3600 * 1000));
+}
