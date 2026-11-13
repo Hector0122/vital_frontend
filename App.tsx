@@ -7,7 +7,7 @@ import { AppState, StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { RootNavigator } from './src/navigation/RootNavigator';
-import { alHidratar, sincronizar } from './src/services/nube';
+import { alHidratar, respaldarEnNube, sincronizar } from './src/services/nube';
 import { generarRevisionSiFalta } from './src/services/revision';
 import { checkForUpdate } from './src/services/updates';
 import { useDataStore } from './src/stores/dataStore';
@@ -18,6 +18,7 @@ function App() {
     checkForUpdate();
     alHidratar(() => {
       sincronizar();
+      respaldarEnNube();
       actualizarWidget();
       generarRevisionSiFalta();
     });

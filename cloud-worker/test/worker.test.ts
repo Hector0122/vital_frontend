@@ -5,8 +5,8 @@ function fakeBucket() {
   const store = new Map<string, Uint8Array>()
   return {
     store,
-    async put(key: string, body: ArrayBuffer) {
-      store.set(key, new Uint8Array(body))
+    async put(key: string, body: ArrayBuffer | string) {
+      store.set(key, typeof body === 'string' ? new TextEncoder().encode(body) : new Uint8Array(body))
     },
     async get(key: string) {
       const data = store.get(key)
@@ -66,6 +66,18 @@ describe('vital-cloud', () => {
     const put = (body: Uint8Array) => call('/fotos/a.jpg', { method: 'PUT', body, headers: auth })
     expect((await put(new Uint8Array(0))).status).toBe(413)
     expect((await put(new Uint8Array(16 * 1024 * 1024))).status).toBe(413)
+  })
+
+  it('guarda y devuelve el respaldo; rechaza lo que no es de Vital', async () => {
+    const { bucket, call } = setup()
+    const respaldo = JSON.stringify({ app: 'vital', version: 1, datos: {} })
+    const put = await call('/respaldo', { method: 'PUT', body: respaldo, headers: auth })
+    expect(put.status).toBe(201)
+    expect([...bucket.store.keys()].sort()).toEqual(['respaldos/ultimo.json', expect.stringMatching(/^respaldos\/\d{4}-\d{2}-\d{2}\.json$/)].sort())
+    expect(await (await call('/respaldo', { headers: auth })).text()).toBe(respaldo)
+    expect((await call('/respaldo', { method: 'PUT', body: '{"app":"otra"}', headers: auth })).status).toBe(400)
+    expect((await call('/respaldo', { method: 'PUT', body: 'x', headers: auth })).status).toBe(400)
+    expect((await call('/respaldo', { method: 'PUT', body: respaldo })).status).toBe(401)
   })
 
   it('health no pide token', async () => {

@@ -11,6 +11,7 @@ export interface Env {
 // Mismo formato que los nombres que genera la app (src/services/fotos.ts).
 export const NOMBRE_FOTO = /^[\w-]{1,64}\.jpg$/
 const MAX_BYTES = 15 * 1024 * 1024 // la app reduce a 1600px; esto solo frena abusos
+const MAX_RESPALDO = 5 * 1024 * 1024 // datos sin fotos: años de registros caben de sobra
 
 const texto = (status: number, body: string) => new Response(body, { status })
 
@@ -20,6 +21,8 @@ const texto = (status: number, body: string) => new Response(body, { status })
  *   PUT    /fotos/:nombre   (cuerpo = jpeg)
  *   GET    /fotos/:nombre
  *   DELETE /fotos/:nombre
+ *   PUT    /respaldo       (JSON de datos sin fotos; guarda el último + una copia por día)
+ *   GET    /respaldo       (el último)
  *   POST   /revision       (resumen de la semana → análisis + metas ligeras, vía Groq)
  * Las fotos se escriben con el binding de R2: no hacen falta llaves S3.
  */
@@ -28,6 +31,30 @@ export default {
     const { pathname } = new URL(request.url)
     if (pathname === '/health') return Response.json({ ok: true })
     if (!(await isAuthorized(request, env.API_TOKEN))) return texto(401, 'No autorizado')
+
+    if (pathname === '/respaldo') {
+      if (request.method === 'GET') {
+        const obj = await env.BUCKET.get('respaldos/ultimo.json')
+        return obj ? new Response(obj.body, { headers: { 'Content-Type': 'application/json' } }) : texto(404, 'Sin respaldo')
+      }
+      if (request.method !== 'PUT') return texto(405, 'Método no permitido')
+      const cuerpo = await request.text()
+      if (!cuerpo || cuerpo.length > MAX_RESPALDO) return texto(413, 'Tamaño inválido')
+      let respaldo: { app?: unknown; exportadoEn?: unknown }
+      try {
+        respaldo = JSON.parse(cuerpo)
+      } catch {
+        return texto(400, 'JSON inválido')
+      }
+      if (respaldo.app !== 'vital') return texto(400, 'No es un respaldo de Vital')
+      const opciones = { httpMetadata: { contentType: 'application/json' } }
+      const dia = new Date().toISOString().slice(0, 10)
+      await Promise.all([
+        env.BUCKET.put('respaldos/ultimo.json', cuerpo, opciones),
+        env.BUCKET.put(`respaldos/${dia}.json`, cuerpo, opciones)
+      ])
+      return texto(201, 'ok')
+    }
 
     if (pathname === '/revision') {
       if (request.method !== 'POST') return texto(405, 'Método no permitido')
