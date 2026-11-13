@@ -1,0 +1,13 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "assets/fonts/ArchivoBlack-Regular.ttf",
+      "sha1": "fe9f8f64a6ca450a1196a3f08c3986f42f22a905"
+    },
+    {
+      "path": "assets/fonts/IBMPlexMono-Medium.ttf",
+      "sha1": "d1246280a315c377a651879047723bab6e3b411e"
+    }
+  ]
+}

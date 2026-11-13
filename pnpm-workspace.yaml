@@ -1,0 +1,3 @@
+# React Native (Metro y Jest) no resuelve bien el node_modules simlinkeado de pnpm.
+# "hoisted" lo deja plano, como npm/yarn clásico (Veya lo hace con .npmrc; pnpm 12 lo lee de aquí).
+nodeLinker: hoisted

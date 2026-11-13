@@ -1,0 +1,25 @@
+import { DarkTheme, NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import React from 'react';
+import { AjustesScreen } from '../screens/AjustesScreen';
+import { colors } from '../theme';
+import { MainTabNavigator } from './MainTabNavigator';
+import type { RootStackParamList } from './types';
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
+
+const navTheme = {
+  ...DarkTheme,
+  colors: { ...DarkTheme.colors, background: colors.background, card: colors.surface, primary: colors.primary, text: colors.text },
+};
+
+export function RootNavigator() {
+  return (
+    <NavigationContainer theme={navTheme}>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Main" component={MainTabNavigator} />
+        <Stack.Screen name="Ajustes" component={AjustesScreen} options={{ headerShown: true, title: 'Ajustes' }} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
