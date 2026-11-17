@@ -74,6 +74,8 @@ interface DataState extends Datos {
   guardarActividad: (
     actividad: Omit<Actividad, 'id'> & { id?: string },
   ) => void;
+  /** Borra la actividad y sus registros (no quedan registros huérfanos). */
+  borrarActividad: (id: string) => void;
   moverArea: (id: string, delta: -1 | 1) => void;
   reemplazarTodo: (datos: Datos) => void;
   alternarDia: (actividadId: string, fecha: string) => void;
@@ -221,6 +223,11 @@ export const useDataStore = create<DataState>()(
               }
             : { actividades: [...s.actividades, { id: nuevoId(), ...campos }] },
         ),
+      borrarActividad: id =>
+        set(s => ({
+          actividades: s.actividades.filter(a => a.id !== id),
+          registros: s.registros.filter(r => r.actividadId !== id),
+        })),
       moverArea: (id, delta) =>
         set(s => {
           const lista = [...s.areas].sort((a, b) => a.orden - b.orden);
