@@ -56,3 +56,13 @@ test('pendientes de la nube: sube lo nuevo y borra lo que ya no se usa', () => {
   });
   expect(pendientes(new Set(), [])).toEqual({ subir: [], borrar: [] });
 });
+
+test('borrarActividad quita la actividad y sus registros', () => {
+  const s = useDataStore.getState();
+  s.agregarRegistros(['a1-0', 'a1-1'], { fecha: '2026-11-13' });
+  useDataStore.getState().borrarActividad('a1-0');
+  const { actividades, registros } = useDataStore.getState();
+  expect(actividades.some(a => a.id === 'a1-0')).toBe(false);
+  expect(registros.some(r => r.actividadId === 'a1-0')).toBe(false);
+  expect(registros.some(r => r.actividadId === 'a1-1')).toBe(true);
+});

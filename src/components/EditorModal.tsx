@@ -67,6 +67,7 @@ interface Props {
   conColor: boolean; // solo las áreas tienen color
   onGuardar: (v: ValoresEditor) => void;
   onCerrar: () => void;
+  onBorrar?: () => void; // solo al editar algo que ya existe
 }
 
 export function EditorModal({
@@ -76,6 +77,7 @@ export function EditorModal({
   conColor,
   onGuardar,
   onCerrar,
+  onBorrar,
 }: Props) {
   const [v, setV] = useState(inicial);
   const nombre = v.nombre.trim();
@@ -170,6 +172,9 @@ export function EditorModal({
               disabled={!nombre}
               onPress={() => onGuardar({ ...v, nombre })}
             />
+            {onBorrar && (
+              <Button title="Eliminar" variant="danger" onPress={onBorrar} />
+            )}
             <Button title="Cancelar" variant="ghost" onPress={onCerrar} />
           </ScrollView>
         </View>

@@ -1,9 +1,16 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Chip } from '../components/Chip';
 import { EditorModal, type ValoresEditor } from '../components/EditorModal';
-import { useDataStore, type Actividad, type Area } from '../stores/dataStore';
+import { borrarFotosHuerfanas } from '../services/fotos';
+import { sincronizar } from '../services/nube';
+import {
+  fotosEnUso,
+  useDataStore,
+  type Actividad,
+  type Area,
+} from '../stores/dataStore';
 import { areaHues, colors, iconSize, radius, spacing, type } from '../theme';
 
 type Edicion =
@@ -11,8 +18,15 @@ type Edicion =
   | { tipo: 'actividad'; areaId: string; actividad?: Actividad };
 
 export function AreasScreen() {
-  const { areas, actividades, guardarArea, guardarActividad, moverArea } =
-    useDataStore();
+  const {
+    areas,
+    actividades,
+    registros,
+    guardarArea,
+    guardarActividad,
+    borrarActividad,
+    moverArea,
+  } = useDataStore();
   const [edicion, setEdicion] = useState<Edicion>();
   const lista = [...areas].sort((a, b) => a.orden - b.orden);
 
@@ -51,11 +65,35 @@ export function AreasScreen() {
     setEdicion(undefined);
   };
 
+  const borrar = (a: Actividad) => {
+    const n = registros.filter(r => r.actividadId === a.id).length;
+    Alert.alert(
+      `¿Eliminar "${a.nombre}"?`,
+      n
+        ? `También se borran sus ${n} registro(s). No se puede deshacer; si solo quieres ocultarla, desactívala.`
+        : 'No se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => {
+            borrarActividad(a.id);
+            borrarFotosHuerfanas(fotosEnUso(useDataStore.getState().registros));
+            sincronizar();
+            setEdicion(undefined);
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <Text style={styles.hint}>
-        Toca un área o actividad para editarla. Desactivar oculta sin borrar:
-        tus registros se conservan.
+        Toca un área o actividad para editarla. Desactivar oculta sin borrar
+        (tus registros se conservan); eliminar una actividad la borra con sus
+        registros.
       </Text>
 
       {lista.map((area, i) => (
@@ -156,6 +194,11 @@ export function AreasScreen() {
           conColor={edicion.tipo === 'area'}
           onGuardar={guardar}
           onCerrar={() => setEdicion(undefined)}
+          onBorrar={
+            edicion.tipo === 'actividad' && edicion.actividad
+              ? () => borrar(edicion.actividad!)
+              : undefined
+          }
         />
       )}
     </ScrollView>

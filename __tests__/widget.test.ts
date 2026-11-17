@@ -83,3 +83,18 @@ test('registro rápido: frecuentes primero, completa hasta 6 y marca lo de hoy',
   expect(botones.find(b => b.actividadId === 'a1-1')!.hechoHoy).toBe(true);
   expect(botones.find(b => b.actividadId === 'a2-0')!.hechoHoy).toBe(false);
 });
+
+test('el widget con metas se puede dibujar (sin Fragments)', () => {
+  // El setup mockea la librería con strings; aquí va la real.
+  jest.resetModules();
+  jest.doMock('react-native-android-widget', () =>
+    jest.requireActual('react-native-android-widget/lib/commonjs/index'),
+  );
+  const { MetasWidget } = require('../src/widget/MetasWidget');
+  const { buildWidgetTree } = require('react-native-android-widget/lib/commonjs/api/build-widget-tree');
+  const datos = datosIniciales();
+  datos.actividades[0].metaSemanal = 2;
+  const metas = modeloWidget(datos, '2026-11-13');
+  expect(metas).toHaveLength(1);
+  expect(() => buildWidgetTree(MetasWidget({ metas, hoy: '2026-11-13' }))).not.toThrow();
+});

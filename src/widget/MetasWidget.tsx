@@ -90,7 +90,8 @@ export function MetasWidget({ metas, hoy }: { metas: MetaWidget[]; hoy: string }
       </FlexWidget>
 
       {metas.length ? (
-        <>
+        // FlexWidget y no <>: la librería no soporta Fragments (lanza y el widget queda en blanco).
+        <FlexWidget style={{ width: 'match_parent' }}>
           <FlexWidget style={{ width: 'match_parent', flexDirection: 'row', marginTop: 8 }}>
             {INICIALES.map((l, i) => (
               <FlexWidget key={i} style={{ flex: 1, alignItems: 'center' }}>
@@ -101,7 +102,7 @@ export function MetasWidget({ metas, hoy }: { metas: MetaWidget[]; hoy: string }
           {metas.map((m) => (
             <Fila key={m.actividadId} meta={m} />
           ))}
-        </>
+        </FlexWidget>
       ) : (
         <FlexWidget clickAction="OPEN_APP" style={{ width: 'match_parent', marginTop: 12 }}>
           <TextWidget
