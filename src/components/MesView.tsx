@@ -4,6 +4,8 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import type { Actividad, Area, Registro } from '../stores/dataStore';
 import { colors, iconSize, radius, spacing, type } from '../theme';
 import { celdasDelMes, hoy, parseIso } from '../utils/fechas';
+import { balanceMes } from '../utils/resumen';
+import { Destacados } from './Destacados';
 
 const INICIALES = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
@@ -42,6 +44,8 @@ export function MesView({ areas, actividades, registros, onElegirDia }: Props) {
       dias: [...areasPorDia.values()].filter(s => s.has(area.id)).length,
     }))
     .filter(x => x.dias > 0);
+
+  const { mensajes } = balanceMes(registros, actividades, mes.anio, mes.mes, hoyIso);
 
   const mover = (delta: number) =>
     setMes(({ anio, mes: m }) => {
@@ -121,6 +125,8 @@ export function MesView({ areas, actividades, registros, onElegirDia }: Props) {
           );
         })}
       </View>
+
+      {mensajes.length ? <Destacados mensajes={mensajes} /> : null}
 
       {diasPorArea.length ? (
         <View style={styles.card}>

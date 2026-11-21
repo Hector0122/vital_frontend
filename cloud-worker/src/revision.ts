@@ -12,12 +12,15 @@ export interface ActividadSemana {
   veces: number
   minutos: number
   metaAnterior?: number
+  vecesAnterior?: number // días la semana previa (versiones viejas de la app no lo mandan)
 }
 
 export interface EntradaRevision {
   actividades: ActividadSemana[]
   sensaciones: Record<string, number>
   diasConRegistro: number
+  diasConRegistroAnterior?: number
+  racha?: number // semanas seguidas con algún registro
   enfoque?: string // lo que la persona dijo que quería priorizar esa semana
 }
 
@@ -52,7 +55,8 @@ export function validarEntrada(body: unknown): EntradaRevision | null {
       area: corto(a.area, 60),
       veces: a.veces,
       minutos: a.minutos,
-      ...(entero(a.metaAnterior, 1, 7) ? { metaAnterior: a.metaAnterior } : {})
+      ...(entero(a.metaAnterior, 1, 7) ? { metaAnterior: a.metaAnterior } : {}),
+      ...(entero(a.vecesAnterior, 0, 7) ? { vecesAnterior: a.vecesAnterior } : {})
     })
   }
   const sensaciones: Record<string, number> = {}
@@ -60,7 +64,14 @@ export function validarEntrada(body: unknown): EntradaRevision | null {
     if (corto(k, 30) && entero(v, 0, 100)) sensaciones[corto(k, 30)] = v as number
   }
   const enfoque = corto(b.enfoque, 300)
-  return { actividades, sensaciones, diasConRegistro: b.diasConRegistro!, ...(enfoque ? { enfoque } : {}) }
+  return {
+    actividades,
+    sensaciones,
+    diasConRegistro: b.diasConRegistro!,
+    ...(entero(b.diasConRegistroAnterior, 0, 7) ? { diasConRegistroAnterior: b.diasConRegistroAnterior } : {}),
+    ...(entero(b.racha, 0, 520) ? { racha: b.racha } : {}),
+    ...(enfoque ? { enfoque } : {})
+  }
 }
 
 /** Lo que devuelve el modelo no es de fiar: solo pasan ids conocidos, 1–7 veces, máx. 2. */
@@ -92,16 +103,18 @@ export function limpiarMetas(lista: unknown, actividades: { id: string }[], max:
 }
 
 const SISTEMA = `Eres el asistente de Vital, una app de equilibrio personal (no de productividad).
-Recibes cuántas veces la persona hizo cada actividad esta semana (lunes a domingo), cómo se sintió, las metas que tenía y, si existe, el "enfoque" que se propuso para esa semana (menciónalo con amabilidad y tenlo en cuenta).
+Recibes cuántas veces la persona hizo cada actividad esta semana (lunes a domingo) y la anterior ("vecesAnterior", "diasConRegistroAnterior"), cuántas semanas seguidas lleva registrando ("racha"), cómo se sintió, las metas que tenía y, si existe, el "enfoque" que se propuso para esa semana (menciónalo con amabilidad y tenlo en cuenta).
+Tu objetivo es que la persona quiera seguir: que sienta avance real, no un reporte.
 
 Reglas de tono — obligatorias:
 - Español neutro, cálido y breve. Habla de "tú".
-- Describe, no juzgues: nada de "fallaste", "deberías", "no cumpliste", "mal". Lo no hecho se nombra con suavidad o no se nombra.
+- No juzgues: nada de "fallaste", "deberías", "no cumpliste", "mal".
+- Si algo bajó respecto a la semana anterior, dilo con honestidad y calma, en una sola frase, con una invitación concreta y pequeña a retomarlo (ej. "Lectura bajó a un día; con un ratito el martes vuelve a agarrar ritmo").
 - El descanso y el tiempo con la familia valen igual que el ejercicio o los proyectos.
 - Sin diagnósticos de salud ni psicológicos. Sin emojis.
 
 Tarea:
-1. "analisis": 2 a 4 frases sobre la semana basadas SOLO en los datos (qué hubo, qué patrón se ve con las sensaciones si lo hay, qué quedó de lado).
+1. "analisis": 2 a 4 frases basadas SOLO en los datos. Empieza con el logro más concreto de la semana (una meta cumplida, algo que subió frente a la anterior, algo retomado o la racha de semanas), con números. Luego un patrón con las sensaciones si lo hay y, si aplica, lo que bajó dicho con suavidad. Nunca una lista de actividades.
 2. "sugerencias": de 0 a 2 metas ligeras para la próxima semana. Progreso de a poco:
    - Si una meta se cumplió y la persona no se sintió cansada, sube como mucho 1 vez.
    - Si no se cumplió, propón lo que sí logró (mínimo 1), sin subir.

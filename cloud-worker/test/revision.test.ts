@@ -16,6 +16,9 @@ describe('validarEntrada', () => {
     expect(validarEntrada(entrada)).toEqual(entrada)
     expect(validarEntrada(null)).toBeNull()
     expect(validarEntrada({ ...entrada, diasConRegistro: 9 })).toBeNull()
+    // semana anterior y racha pasan si son válidas; si no, se ignoran
+    expect(validarEntrada({ ...entrada, diasConRegistroAnterior: 4, racha: 3 })).toMatchObject({ diasConRegistroAnterior: 4, racha: 3 })
+    expect(validarEntrada({ ...entrada, racha: -2 })).not.toHaveProperty('racha')
     expect(validarEntrada({ ...entrada, actividades: [{ id: 'x', nombre: 'y', veces: -1, minutos: 0 }] })).toBeNull()
   })
 })

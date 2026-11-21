@@ -4,6 +4,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Destacados } from '../components/Destacados';
 import { MesView } from '../components/MesView';
 import { Recuerdos } from '../components/Recuerdos';
 import { RegistroItem } from '../components/RegistroItem';
@@ -19,7 +20,7 @@ import {
   offsetSemanas,
   parseIso,
 } from '../utils/fechas';
-import { resumenSemana, veces } from '../utils/resumen';
+import { balanceSemana, resumenSemana, veces } from '../utils/resumen';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Semana'>,
@@ -41,6 +42,7 @@ export function SemanaScreen({ navigation }: Props) {
     areas,
     dias,
   );
+  const { mensajes, metas } = balanceSemana(registros, actividades, dias, hoy());
   const dia = diaElegido && dias.includes(diaElegido) ? diaElegido : undefined;
   // La pendiente se muestra en Inicio; aquí queda el historial.
   const revision = revisiones?.find(
@@ -208,9 +210,7 @@ export function SemanaScreen({ navigation }: Props) {
               </View>
             ) : null}
 
-            <View style={styles.fraseCard}>
-              <Text style={styles.frase}>{frase}</Text>
-            </View>
+            <Destacados mensajes={mensajes} detalle={frase} />
 
             <Recuerdos
               registros={dias.flatMap(d => porDia[d])}
@@ -286,6 +286,22 @@ export function SemanaScreen({ navigation }: Props) {
                       ))}
                       {n > 7 && <Text style={styles.muted}>+{n - 7}</Text>}
                     </View>
+                    {metas[actividad.id] &&
+                      (metas[actividad.id].dias >= metas[actividad.id].meta ? (
+                        <Icon
+                          name="check-circle"
+                          size={iconSize.sm}
+                          color={area.color}
+                          accessibilityLabel="Meta lograda"
+                        />
+                      ) : (
+                        <Text
+                          style={styles.muted}
+                          accessibilityLabel={`${metas[actividad.id].dias} de ${metas[actividad.id].meta} días de la meta`}
+                        >
+                          {metas[actividad.id].dias}/{metas[actividad.id].meta}
+                        </Text>
+                      ))}
                     <Text style={styles.minutos}>
                       {minutos ? formatDuracion(minutos) : ''}
                     </Text>
@@ -346,13 +362,6 @@ const styles = StyleSheet.create({
   puntos: { flexDirection: 'row', gap: 3, height: 8 },
   punto: { width: 8, height: 8, borderRadius: 4 },
   puntoVacio: { borderWidth: 1, borderColor: colors.border },
-  fraseCard: {
-    backgroundColor: colors.primarySoft,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginVertical: spacing.xs,
-  },
-  frase: { ...type.body, fontSize: 17, lineHeight: 24, color: colors.text },
   flex: { flex: 1 },
   puntosFila: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   puntoVez: { width: 10, height: 10, borderRadius: 5 },

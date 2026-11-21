@@ -5,7 +5,7 @@ import {
   type Sugerencia,
 } from '../stores/dataStore';
 import { diasDeSemana, toIso } from '../utils/fechas';
-import { resumenSemana, veces } from '../utils/resumen';
+import { balanceSemana, resumenSemana, veces } from '../utils/resumen';
 import { leerConfig } from './nube';
 
 /** Lo que se manda a la IA (cloud-worker/src/revision.ts): conteos y sensaciones, nunca notas ni fotos. */
@@ -17,9 +17,12 @@ export interface EntradaRevision {
     veces: number;
     minutos: number;
     metaAnterior?: number;
+    vecesAnterior: number; // días distintos la semana previa, para hablar de avance o de lo que bajó
   }[];
   sensaciones: Record<string, number>;
   diasConRegistro: number;
+  diasConRegistroAnterior: number;
+  racha: number; // semanas seguidas con al menos un registro
   enfoque?: string;
 }
 
@@ -37,6 +40,8 @@ export function construirEntrada(
   dias: string[],
 ): EntradaRevision {
   const enSemana = registros.filter(r => dias.includes(r.fecha));
+  const previa = diasDeSemana(dias[0], -1);
+  const enPrevia = registros.filter(r => previa.includes(r.fecha));
   const areasActivas = new Map(areas.filter(a => a.activo).map(a => [a.id, a]));
   const sensaciones: Record<string, number> = {};
   for (const r of enSemana)
@@ -54,10 +59,15 @@ export function construirEntrada(
           veces: new Set(propios.map(r => r.fecha)).size, // días distintos, igual que el widget
           minutos: propios.reduce((s, r) => s + (r.duracionMin ?? 0), 0),
           ...(a.metaSemanal ? { metaAnterior: a.metaSemanal } : {}),
+          vecesAnterior: new Set(
+            enPrevia.filter(r => r.actividadId === a.id).map(r => r.fecha),
+          ).size,
         };
       }),
     sensaciones,
     diasConRegistro: new Set(enSemana.map(r => r.fecha)).size,
+    diasConRegistroAnterior: new Set(enPrevia.map(r => r.fecha)).size,
+    racha: balanceSemana(registros, actividades, dias, dias[6]).racha,
     ...(enfoques?.[dias[0]] ? { enfoque: enfoques[dias[0]] } : {}),
   };
 }
@@ -175,12 +185,21 @@ export async function generarRevisionSiFalta(
   enCurso = true;
   try {
     const ia = await pedirIA(entrada);
+    const destacados = balanceSemana(
+      datos.registros,
+      datos.actividades,
+      dias,
+      dias[6],
+    ).mensajes.map(m => m.texto);
     const base =
       ia ??
       revisionPorReglas(
         entrada,
-        resumenSemana(datos.registros, datos.actividades, datos.areas, dias)
-          .frase,
+        [
+          ...destacados,
+          resumenSemana(datos.registros, datos.actividades, datos.areas, dias)
+            .frase,
+        ].join(' '),
       );
     useDataStore
       .getState()

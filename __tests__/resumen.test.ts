@@ -1,6 +1,6 @@
 import { datosIniciales, type Registro } from '../src/stores/dataStore';
 import { diasDeSemana } from '../src/utils/fechas';
-import { resumenSemana, veces } from '../src/utils/resumen';
+import { balanceMes, balanceSemana, resumenSemana, veces } from '../src/utils/resumen';
 import { frecuentes } from '../src/utils/catalogo';
 
 const { areas, actividades } = datosIniciales();
@@ -73,4 +73,81 @@ test('frecuentes: las más registradas primero, sin inactivas ni nunca usadas', 
   ];
   expect(frecuentes(regs, acts).map(a => a.id)).toEqual(['a0-0', 'a2-0']);
   expect(frecuentes([], acts)).toEqual([]);
+});
+
+describe('balanceSemana', () => {
+  // dias = semana del 9 al 15 nov 2026; la anterior, 2 al 8.
+  test('celebra metas, racha y lo retomado', () => {
+    const acts = datosIniciales().actividades;
+    acts.find(a => a.id === 'a0-0')!.metaSemanal = 2;
+    const r = balanceSemana(
+      [
+        reg('a2-0', '2026-10-01'), // lectura hace semanas
+        reg('a0-0', '2026-11-02'),
+        reg('a0-0', '2026-11-09'),
+        reg('a0-0', '2026-11-11'),
+        reg('a2-0', '2026-11-12'),
+      ],
+      acts,
+      dias,
+      '2026-11-15',
+    );
+    expect(r.metas['a0-0']).toEqual({ dias: 2, meta: 2 });
+    expect(r.racha).toBe(2);
+    expect(r.mensajes.map(m => m.texto)).toEqual([
+      'Cumpliste tu meta de la semana.',
+      'Tu semana más constante del último mes.',
+      'Llevas 2 semanas seguidas cuidándote.',
+    ]);
+  });
+
+  test('si bajó, lo dice con calma y una sola vez', () => {
+    const r = balanceSemana(
+      [
+        reg('a0-0', '2026-11-03'),
+        reg('a0-0', '2026-11-05'),
+        reg('a0-0', '2026-11-07'),
+        reg('a2-0', '2026-11-10'),
+      ],
+      actividades,
+      dias,
+      '2026-11-15',
+    );
+    const avisos = r.mensajes.filter(m => m.tipo === 'aviso');
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0].texto).toBe(
+      'Fue 1 día con registro, frente a 3 la semana pasada. Lo que viene es buen momento para retomar.',
+    );
+    expect(avisos[0].texto).not.toMatch(/fallaste|deberías|no cumpliste/i);
+  });
+
+  test('semana en curso: compara solo los días transcurridos', () => {
+    const r = balanceSemana(
+      [reg('a0-0', '2026-11-03'), reg('a0-0', '2026-11-06'), reg('a0-0', '2026-11-10')],
+      actividades,
+      dias,
+      '2026-11-11', // miércoles: contra lun–mié de la anterior (1 día) → sin aviso
+    );
+    expect(r.mensajes.some(m => m.tipo === 'aviso')).toBe(false);
+  });
+});
+
+test('balanceMes: lo más constante, comparación y lo nuevo', () => {
+  const r = balanceMes(
+    [
+      reg('a0-0', '2026-10-03'),
+      reg('a0-0', '2026-11-02'),
+      reg('a0-0', '2026-11-04'),
+      reg('a2-0', '2026-11-05'),
+    ],
+    actividades,
+    2026,
+    10,
+    '2026-11-30',
+  );
+  expect(r.mensajes.map(m => m.texto)).toEqual([
+    'Lo más constante: ejercicio, 2 días.',
+    'Te diste tiempo 2 días más que el mes pasado.',
+    'Probaste algo nuevo: lectura.',
+  ]);
 });
