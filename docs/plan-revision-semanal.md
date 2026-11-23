@@ -184,3 +184,64 @@ para que diga lo de abajo, agregar la nota "Ensayo con el grupo" a ese registro.
 >
 > Para la próxima: mantener 2 caminatas y meter un rato de dibujo, aunque sea corto. Veamos
 > cómo nos va.
+
+---
+
+# Parte 2: mejoras generales de la app (más amigable)
+
+Estado: **plan, sin implementar**. Revisión hecha el 2026-11-22 sobre el código y el respaldo.
+Orden por impacto.
+
+## A. Cosas que confunden o dan datos equivocados
+
+1. **La revisión se genera antes de que acabe la semana.** `semanaARevisar` permite cerrar la
+   semana el domingo desde las 18:00, así que lo que se registre esa noche no entra (el
+   22-nov, el día con los niños aún no estaba registrado y la revisión ya existía).
+   Opciones: generarla el lunes en la mañana, o regenerarla automáticamente si cambian
+   registros de esa semana mientras siga en `estado: 'pendiente'`.
+2. **Semanas pasadas usan las metas actuales.** En `SemanaScreen.tsx`, `balanceSemana(...)`
+   arma `metas` con `a.metaSemanal` actual, también al navegar a semanas anteriores.
+   Usar las metas reales de esa semana (`aceptadas` de la revisión previa; ver Parte 1,
+   punto 1).
+3. **Unidades mezcladas.** Las tarjetas por área ("Bienestar cinco veces", puntos) cuentan
+   registros (`resumenSemana`), las metas cuentan días distintos (`balanceSemana`, widget).
+   Unificar en días.
+4. **Borrar una actividad borra sus registros** (así se perdió el historial de Comer con
+   calma). En `AreasScreen.tsx`: ofrecer "Desactivar" como acción principal y dejar "Eliminar"
+   más escondido, con confirmación que diga cuántos registros se pierden.
+5. **Áreas nuevas heredan ícono y color de Bienestar** (`leaf`, `#2BD4CE`; le pasó a Trabajo).
+   Pedir ícono/color al crear o asignar uno libre de la paleta.
+
+## B. Registrar más rápido (`RegistroScreen.tsx`, `utils/catalogo.ts`)
+
+6. **Duraciones reales.** `DURACIONES = [15, 30, 60, 90]`, pero el uso real es 2, 3 y 4 h muy
+   seguido. Agregar 120, 180, 240 y el chip "Todo el día" (Parte 1, punto 7). Proponer por
+   default la última duración usada en esa actividad.
+7. **Sensaciones más finas.** "Cansado" aparece en tocar con el grupo (disfrutado) y en Gnex
+   (trabajo). Permitir hasta 2 sensaciones por registro (`sensacion` → `sensaciones?:
+   string[]`, compatible con lo viejo) o agregar "Satisfecho" y "Estresado". Pasarlo a la
+   IA para distinguir cansancio bueno de malo.
+8. **Recordatorio nocturno opcional** (ej. 21:00) solo si ese día no hay registros. Hoy solo
+   existe `AvisoDomingo.kt`; reutilizar el mismo patrón AlarmManager + notificación, con
+   switch en Ajustes.
+
+## C. Mi semana más útil (`SemanaScreen.tsx`)
+
+9. **"Cómo te fue" primero** en semanas cerradas (hoy queda debajo de Recuerdos/notas).
+10. **Resumen de mitad de semana sin IA**: "Vas 1 de 2 en Caminata; Dibujo aún sin registro".
+    Se puede armar con `balanceSemana` y mostrarse mientras la semana está en curso.
+11. **Trabajo aparte**: mostrar el área Trabajo separada o permitir excluirla del balance
+    (flag en `Area`, ej. `cuentaEnBalance?: boolean`), para que no infle Creatividad.
+
+## D. Detalles
+
+12. **Mensaje de Inicio dinámico.** "No tienes que hacerlo todo hoy" es fijo; variar según la
+    semana ("Hoy aún no registras nada", "Ya cumpliste Caminata").
+13. **Recientes repite Mi semana.** En Inicio mostrar solo hoy y ayer.
+14. Corrección menor de dato: actividad "Raccon Cyberpunk" → "Raccoon Cyberpunk".
+
+## Orden sugerido para la Parte 2
+
+- Primero A.1–A.3 (afectan lo que dicen los resúmenes y van con la Parte 1).
+- Luego B.6 (junto con "Todo el día") y A.4–A.5.
+- Después C y B.7–B.8; D al final.
