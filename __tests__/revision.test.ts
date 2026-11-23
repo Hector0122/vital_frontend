@@ -5,10 +5,13 @@ import {
 } from '../src/stores/dataStore';
 import {
   construirEntrada,
+  generarRevisionSiFalta,
+  regenerarRevision,
   revisionPorReglas,
   semanaARevisar,
 } from '../src/services/revision';
 import { diasDeSemana } from '../src/utils/fechas';
+import * as nube from '../src/services/nube';
 
 const reg = (
   actividadId: string,
@@ -99,6 +102,83 @@ test('aplicar revisión: las aceptadas son las nuevas metas y las demás se quit
   ).toBeUndefined();
   expect(st.revisiones![0]).toMatchObject({
     estado: 'aplicada',
-    aceptadas: [{ actividadId: 'a0-0', veces: 3 }],
+    aceptadas: [{ actividadId: 'a0-0', veces: 3, nombre: 'Ejercicio' }],
   });
+});
+
+test('revisión pendiente: se rehace si registras algo más de esa semana', async () => {
+  useDataStore.setState({ ...datosIniciales(), revisiones: [] });
+  useDataStore.getState().agregarRegistros(['a0-0'], { fecha: '2026-11-10' });
+  const lunes = new Date(2026, 10, 16, 9); // revisa la semana del 9
+  await generarRevisionSiFalta(lunes);
+  const primera = useDataStore.getState().revisiones![0];
+  expect(primera.analisis).not.toContain('lectura');
+
+  await generarRevisionSiFalta(lunes); // sin cambios: no se rehace
+  expect(useDataStore.getState().revisiones![0]).toBe(primera);
+
+  useDataStore.getState().agregarRegistros(['a2-0'], { fecha: '2026-11-15' }); // domingo en la noche
+  await generarRevisionSiFalta(lunes);
+  expect(useDataStore.getState().revisiones![0].analisis).toContain('lectura');
+
+  useDataStore.getState().aplicarRevision('2026-11-09', []);
+  useDataStore.getState().agregarRegistros(['a0-0'], { fecha: '2026-11-14' });
+  await generarRevisionSiFalta(lunes); // ya aplicada: no se toca
+  expect(useDataStore.getState().revisiones![0].estado).toBe('aplicada');
+});
+
+test('rehacer: cambia solo el texto, conserva lo elegido y usa las metas de esa semana', async () => {
+  useDataStore.setState({
+    ...datosIniciales(),
+    registros: [reg('a0-0', '2026-11-10')],
+    revisiones: [
+      {
+        semana: '2026-11-02', // al cerrarla elegiste Ejercicio 2× para la del 9
+        analisis: 'a',
+        sugerencias: [],
+        fuente: 'reglas',
+        estado: 'aplicada',
+        aceptadas: [{ actividadId: 'a0-0', veces: 2 }],
+      },
+      {
+        semana: '2026-11-09',
+        analisis: 'Lista vieja.',
+        sugerencias: [],
+        fuente: 'reglas',
+        estado: 'aplicada',
+        aceptadas: [{ actividadId: 'a2-0', veces: 1, nombre: 'Lectura' }],
+      },
+    ],
+  });
+  jest
+    .spyOn(nube, 'leerConfig')
+    .mockResolvedValue({ url: 'https://w', token: 't' } as any);
+  const fetchMock = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ analisis: 'Texto nuevo.', sugerencias: [] }),
+  });
+  globalThis.fetch = fetchMock as any;
+
+  expect(await regenerarRevision('2026-11-09')).toBe(true);
+  const r = useDataStore
+    .getState()
+    .revisiones!.find(x => x.semana === '2026-11-09')!;
+  expect(r).toMatchObject({
+    analisis: 'Texto nuevo.',
+    fuente: 'ia',
+    estado: 'aplicada',
+    aceptadas: [{ actividadId: 'a2-0', veces: 1, nombre: 'Lectura' }],
+  });
+  const entrada = JSON.parse(fetchMock.mock.calls[0][1].body);
+  expect(
+    entrada.actividades.find((a: any) => a.id === 'a0-0').metaAnterior,
+  ).toBe(2);
+
+  fetchMock.mockResolvedValue({ ok: false });
+  expect(await regenerarRevision('2026-11-09')).toBe(false); // la IA falla: no se toca
+  expect(
+    useDataStore.getState().revisiones!.find(x => x.semana === '2026-11-09')!
+      .analisis,
+  ).toBe('Texto nuevo.');
+  jest.restoreAllMocks();
 });

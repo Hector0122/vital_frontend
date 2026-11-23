@@ -2,7 +2,15 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import Toast from 'react-native-toast-message';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Destacados } from '../components/Destacados';
 import { MesView } from '../components/MesView';
@@ -10,6 +18,7 @@ import { Recuerdos } from '../components/Recuerdos';
 import { RegistroItem } from '../components/RegistroItem';
 import { Screen } from '../components/Screen';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
+import { regenerarRevision } from '../services/revision';
 import { useDataStore } from '../stores/dataStore';
 import { colors, iconSize, radius, spacing, type } from '../theme';
 import { formatDuracion } from '../utils/catalogo';
@@ -20,7 +29,12 @@ import {
   offsetSemanas,
   parseIso,
 } from '../utils/fechas';
-import { balanceSemana, resumenSemana, veces } from '../utils/resumen';
+import {
+  balanceSemana,
+  metasDeSemana,
+  resumenSemana,
+  veces,
+} from '../utils/resumen';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Semana'>,
@@ -34,6 +48,22 @@ export function SemanaScreen({ navigation }: Props) {
   const [offset, setOffset] = useState(0); // 0 = esta semana, -1 = la anterior…
   const [diaElegido, setDiaElegido] = useState<string>();
   const [modo, setModo] = useState<'semana' | 'mes'>('semana');
+  const [rehaciendo, setRehaciendo] = useState(false);
+
+  const rehacer = async (semana: string) => {
+    setRehaciendo(true);
+    const ok = await regenerarRevision(semana);
+    setRehaciendo(false);
+    Toast.show(
+      ok
+        ? { type: 'success', text1: 'Resumen rehecho' }
+        : {
+            type: 'error',
+            text1: 'No se pudo rehacer',
+            text2: 'La IA no respondió; tu resumen sigue igual.',
+          },
+    );
+  };
 
   const dias = diasDeSemana(hoy(), offset);
   const { porDia, porArea, frase } = resumenSemana(
@@ -42,7 +72,13 @@ export function SemanaScreen({ navigation }: Props) {
     areas,
     dias,
   );
-  const { mensajes, metas } = balanceSemana(registros, actividades, dias, hoy());
+  const { mensajes, metas } = balanceSemana(
+    registros,
+    actividades,
+    dias,
+    hoy(),
+    metasDeSemana({ actividades, revisiones }, dias[0], hoy()),
+  );
   const dia = diaElegido && dias.includes(diaElegido) ? diaElegido : undefined;
   // La pendiente se muestra en Inicio; aquí queda el historial.
   const revision = revisiones?.find(
@@ -234,16 +270,30 @@ export function SemanaScreen({ navigation }: Props) {
                   {revision.fuente === 'ia' && (
                     <Text style={styles.muted}>IA</Text>
                   )}
+                  {rehaciendo ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Pressable
+                      onPress={() => rehacer(revision.semana)}
+                      hitSlop={12}
+                      accessibilityRole="button"
+                      accessibilityLabel="Rehacer el resumen con IA"
+                    >
+                      <Text style={styles.rehacer}>Rehacer</Text>
+                    </Pressable>
+                  )}
                 </View>
                 <Text style={styles.body}>{revision.analisis}</Text>
                 {revision.aceptadas?.length ? (
                   <Text style={styles.muted}>
-                    Metas que elegiste:{' '}
+                    Metas para la siguiente semana:{' '}
                     {revision.aceptadas
                       .map(
                         m =>
                           `${
-                            actividadDe(m.actividadId)?.nombre ?? 'actividad'
+                            actividadDe(m.actividadId)?.nombre ??
+                            m.nombre ??
+                            'actividad eliminada'
                           } ${m.veces}×`,
                       )
                       .join(', ')}
@@ -263,17 +313,19 @@ export function SemanaScreen({ navigation }: Props) {
                   <Text style={[styles.cardTitle, styles.flex]}>
                     {area.nombre}
                   </Text>
-                  <Text style={styles.muted}>{veces(total)}</Text>
+                  <Text style={styles.muted}>
+                    {total} {total === 1 ? 'día' : 'días'}
+                  </Text>
                 </View>
                 {acts.map(({ actividad, veces: n, minutos }) => (
                   <View key={actividad.id} style={styles.fila}>
                     <Text style={[styles.body, styles.flex]} numberOfLines={1}>
                       {actividad.nombre}
                     </Text>
-                    {/* Un punto por vez: presencia, no progreso. */}
+                    {/* Un punto por día: presencia, no progreso. */}
                     <View
                       style={styles.puntosFila}
-                      accessibilityLabel={veces(n)}
+                      accessibilityLabel={`${n} ${n === 1 ? 'día' : 'días'}`}
                     >
                       {Array.from({ length: Math.min(n, 7) }, (_, k) => (
                         <View
@@ -297,7 +349,9 @@ export function SemanaScreen({ navigation }: Props) {
                       ) : (
                         <Text
                           style={styles.muted}
-                          accessibilityLabel={`${metas[actividad.id].dias} de ${metas[actividad.id].meta} días de la meta`}
+                          accessibilityLabel={`${metas[actividad.id].dias} de ${
+                            metas[actividad.id].meta
+                          } días de la meta`}
                         >
                           {metas[actividad.id].dias}/{metas[actividad.id].meta}
                         </Text>
@@ -387,4 +441,5 @@ const styles = StyleSheet.create({
   },
   body: { ...type.bodySm, color: colors.text },
   muted: { ...type.bodySm, color: colors.muted },
+  rehacer: { ...type.bodySm, color: colors.primary },
 });

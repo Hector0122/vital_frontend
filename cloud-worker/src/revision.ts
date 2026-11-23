@@ -136,7 +136,10 @@ export async function revisarConGroq(
   modelo?: string
 ): Promise<SalidaRevision | null> {
   const texto = await llamarGroq(SISTEMA, entrada, apiKey, modelo)
-  return texto ? limpiarSalida(texto, entrada) : null
+  if (!texto) return null
+  const salida = limpiarSalida(texto, entrada)
+  if (!salida) console.error('groq: JSON inválido o sin análisis', texto.slice(0, 300))
+  return salida
 }
 
 /** Pide JSON a Groq (mismo patrón que veya_backend/src/ai/ai.service.ts). Devuelve el texto o null. */
@@ -146,7 +149,10 @@ export async function llamarGroq(
   apiKey: string | undefined,
   modelo = 'openai/gpt-oss-120b'
 ): Promise<string | null> {
-  if (!apiKey) return null
+  if (!apiKey) {
+    console.error('groq: falta GROQ_API_KEY')
+    return null
+  }
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -163,10 +169,17 @@ export async function llamarGroq(
       }),
       signal: AbortSignal.timeout(25_000)
     })
-    if (!res.ok) return null
+    // Los motivos quedan en los logs de Cloudflare (observability en wrangler.toml); nunca se loguea la entrada.
+    if (!res.ok) {
+      console.error('groq', res.status, (await res.text()).slice(0, 300))
+      return null
+    }
     const data = (await res.json()) as GroqResponse
-    return data.choices?.[0]?.message?.content?.trim() || null
-  } catch {
+    const texto = data.choices?.[0]?.message?.content?.trim()
+    if (!texto) console.error('groq: respuesta vacía', JSON.stringify(data).slice(0, 300))
+    return texto || null
+  } catch (e) {
+    console.error('groq: error de red o timeout', String(e))
     return null
   }
 }

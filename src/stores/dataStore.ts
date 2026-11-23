@@ -47,7 +47,8 @@ export interface Revision {
   sugerencias: Sugerencia[];
   fuente: 'ia' | 'reglas';
   estado: 'pendiente' | 'aplicada' | 'descartada';
-  aceptadas?: { actividadId: string; veces: number }[]; // lo que elegiste, para el historial
+  aceptadas?: { actividadId: string; veces: number; nombre?: string }[]; // metas elegidas para la semana siguiente; el nombre sobrevive si se borra la actividad
+  huella?: string; // registros de la semana al generarla: si cambian mientras está pendiente, se rehace
 }
 
 export interface Datos {
@@ -263,7 +264,15 @@ export const useDataStore = create<DataState>()(
           })),
           revisiones: (s.revisiones ?? []).map(r =>
             r.semana === semana
-              ? { ...r, estado: 'aplicada' as const, aceptadas: metas }
+              ? {
+                  ...r,
+                  estado: 'aplicada' as const,
+                  aceptadas: metas.map(m => ({
+                    ...m,
+                    nombre: s.actividades.find(a => a.id === m.actividadId)
+                      ?.nombre,
+                  })),
+                }
               : r,
           ),
         })),

@@ -4,8 +4,13 @@ import {
   type Revision,
   type Sugerencia,
 } from '../stores/dataStore';
-import { diasDeSemana, toIso } from '../utils/fechas';
-import { balanceSemana, resumenSemana, veces } from '../utils/resumen';
+import { diasDeSemana, hoy, toIso } from '../utils/fechas';
+import {
+  balanceSemana,
+  metasDeSemana,
+  resumenSemana,
+  veces,
+} from '../utils/resumen';
 import { leerConfig } from './nube';
 
 /** Lo que se manda a la IA (cloud-worker/src/revision.ts): conteos y sensaciones, nunca notas ni fotos. */
@@ -36,9 +41,12 @@ export function semanaARevisar(ahora: Date): string {
 }
 
 export function construirEntrada(
-  { areas, actividades, registros, enfoques }: Datos,
+  datos: Datos,
   dias: string[],
+  hoyIso = hoy(),
 ): EntradaRevision {
+  const { areas, actividades, registros, enfoques } = datos;
+  const metas = metasDeSemana(datos, dias[0], hoyIso); // las de ESA semana, también al rehacer una vieja
   const enSemana = registros.filter(r => dias.includes(r.fecha));
   const previa = diasDeSemana(dias[0], -1);
   const enPrevia = registros.filter(r => previa.includes(r.fecha));
@@ -58,7 +66,9 @@ export function construirEntrada(
           area: areasActivas.get(a.areaId)!.nombre,
           veces: new Set(propios.map(r => r.fecha)).size, // días distintos, igual que el widget
           minutos: propios.reduce((s, r) => s + (r.duracionMin ?? 0), 0),
-          ...(a.metaSemanal ? { metaAnterior: a.metaSemanal } : {}),
+          ...(metas.find(m => m.actividadId === a.id)
+            ? { metaAnterior: metas.find(m => m.actividadId === a.id)!.veces }
+            : {}),
           vecesAnterior: new Set(
             enPrevia.filter(r => r.actividadId === a.id).map(r => r.fecha),
           ).size,
@@ -67,7 +77,7 @@ export function construirEntrada(
     sensaciones,
     diasConRegistro: new Set(enSemana.map(r => r.fecha)).size,
     diasConRegistroAnterior: new Set(enPrevia.map(r => r.fecha)).size,
-    racha: balanceSemana(registros, actividades, dias, dias[6]).racha,
+    racha: balanceSemana(registros, actividades, dias, dias[6], []).racha,
     ...(enfoques?.[dias[0]] ? { enfoque: enfoques[dias[0]] } : {}),
   };
 }
@@ -170,26 +180,41 @@ async function pedirIA(
 
 let enCurso = false;
 
-/** Crea la revisión de la semana cerrada si falta y hubo registros. Nunca lanza. */
+/** Lo que identifica los registros de la semana: cambia al agregar, borrar o mover uno. */
+const huellaDe = (datos: Datos, dias: string[]) => {
+  const enSemana = datos.registros.filter(r => dias.includes(r.fecha));
+  return `${enSemana.length}:${Math.max(0, ...enSemana.map(r => r.creadoEn))}`;
+};
+
+/**
+ * Crea la revisión de la semana cerrada si falta y hubo registros. Si sigue
+ * pendiente y registraste algo de esa semana después (p. ej. el domingo en la
+ * noche), la rehace. Nunca lanza.
+ */
 export async function generarRevisionSiFalta(
   ahora = new Date(),
 ): Promise<void> {
   if (enCurso || !useDataStore.persist.hasHydrated()) return;
   const semana = semanaARevisar(ahora);
   const datos = useDataStore.getState();
-  if ((datos.revisiones ?? []).some(r => r.semana === semana)) return;
   const dias = diasDeSemana(semana);
+  const huella = huellaDe(datos, dias);
+  const previa = (datos.revisiones ?? []).find(r => r.semana === semana);
+  if (previa && (previa.estado !== 'pendiente' || previa.huella === huella))
+    return;
   const entrada = construirEntrada(datos, dias);
   if (!entrada.diasConRegistro) return; // semana vacía: nada que revisar, sin reproches
 
   enCurso = true;
   try {
     const ia = await pedirIA(entrada);
+    if (!ia && previa?.fuente === 'ia') return; // sin red no cambiamos la de IA por reglas; se reintenta al volver
     const destacados = balanceSemana(
       datos.registros,
       datos.actividades,
       dias,
       dias[6],
+      metasDeSemana(datos, semana, dias[6]),
     ).mensajes.map(m => m.texto);
     const base =
       ia ??
@@ -201,15 +226,40 @@ export async function generarRevisionSiFalta(
             .frase,
         ].join(' '),
       );
-    useDataStore
-      .getState()
-      .guardarRevision({
-        semana,
-        ...base,
-        fuente: ia ? 'ia' : 'reglas',
-        estado: 'pendiente',
-      });
+    useDataStore.getState().guardarRevision({
+      semana,
+      ...base,
+      fuente: ia ? 'ia' : 'reglas',
+      estado: 'pendiente',
+      huella,
+    });
   } finally {
     enCurso = false;
   }
+}
+
+/**
+ * "Rehacer": vuelve a pedir a la IA el análisis de una semana ya revisada.
+ * Solo cambia el texto; lo que ya elegiste (estado, metas aceptadas) se queda.
+ * Si la IA falla devuelve false y no toca nada (no se cambia por reglas).
+ */
+export async function regenerarRevision(semana: string): Promise<boolean> {
+  const dias = diasDeSemana(semana);
+  const datos = useDataStore.getState();
+  if (!datos.revisiones?.some(r => r.semana === semana)) return false;
+  const ia = await pedirIA(construirEntrada(datos, dias));
+  // Releer: mientras esperábamos pudiste aceptar o descartar la revisión.
+  const actual = useDataStore
+    .getState()
+    .revisiones?.find(r => r.semana === semana);
+  if (!ia || !actual) return false;
+  useDataStore.getState().guardarRevision({
+    ...actual,
+    analisis: ia.analisis,
+    fuente: 'ia',
+    ...(actual.estado === 'pendiente'
+      ? { sugerencias: ia.sugerencias, huella: huellaDe(datos, dias) }
+      : {}),
+  });
+  return true;
 }

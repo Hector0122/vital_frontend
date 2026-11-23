@@ -1,6 +1,12 @@
 import { datosIniciales, type Registro } from '../src/stores/dataStore';
 import { diasDeSemana } from '../src/utils/fechas';
-import { balanceMes, balanceSemana, resumenSemana, veces } from '../src/utils/resumen';
+import {
+  balanceMes,
+  balanceSemana,
+  metasDeSemana,
+  resumenSemana,
+  veces,
+} from '../src/utils/resumen';
 import { frecuentes } from '../src/utils/catalogo';
 
 const { areas, actividades } = datosIniciales();
@@ -91,6 +97,7 @@ describe('balanceSemana', () => {
       acts,
       dias,
       '2026-11-15',
+      metasDeSemana({ actividades: acts }, dias[0], '2026-11-15'),
     );
     expect(r.metas['a0-0']).toEqual({ dias: 2, meta: 2 });
     expect(r.racha).toBe(2);
@@ -112,6 +119,7 @@ describe('balanceSemana', () => {
       actividades,
       dias,
       '2026-11-15',
+      [],
     );
     const avisos = r.mensajes.filter(m => m.tipo === 'aviso');
     expect(avisos).toHaveLength(1);
@@ -123,10 +131,15 @@ describe('balanceSemana', () => {
 
   test('semana en curso: compara solo los días transcurridos', () => {
     const r = balanceSemana(
-      [reg('a0-0', '2026-11-03'), reg('a0-0', '2026-11-06'), reg('a0-0', '2026-11-10')],
+      [
+        reg('a0-0', '2026-11-03'),
+        reg('a0-0', '2026-11-06'),
+        reg('a0-0', '2026-11-10'),
+      ],
       actividades,
       dias,
       '2026-11-11', // miércoles: contra lun–mié de la anterior (1 día) → sin aviso
+      [],
     );
     expect(r.mensajes.some(m => m.tipo === 'aviso')).toBe(false);
   });
@@ -150,4 +163,67 @@ test('balanceMes: lo más constante, comparación y lo nuevo', () => {
     'Te diste tiempo 2 días más que el mes pasado.',
     'Probaste algo nuevo: lectura.',
   ]);
+});
+
+test('metasDeSemana: una semana pasada usa lo aceptado antes, no las metas de hoy', () => {
+  const acts = datosIniciales().actividades;
+  acts.find(a => a.id === 'a0-0')!.metaSemanal = 5; // meta de hoy
+  const revisiones = [
+    {
+      semana: '2026-10-26',
+      estado: 'aplicada',
+      aceptadas: [{ actividadId: 'a2-0', veces: 1 }],
+    },
+    {
+      semana: '2026-11-02',
+      estado: 'aplicada',
+      aceptadas: [
+        { actividadId: 'a0-0', veces: 2 },
+        { actividadId: 'borrada', veces: 1 },
+      ],
+    },
+    {
+      semana: '2026-11-09',
+      estado: 'aplicada',
+      aceptadas: [{ actividadId: 'a0-0', veces: 9 }],
+    },
+  ] as any;
+  // Semana del 9: rigen las aceptadas al cerrar la del 2 (sin la actividad borrada).
+  expect(
+    metasDeSemana(
+      { actividades: acts, revisiones },
+      '2026-11-09',
+      '2026-11-23',
+    ),
+  ).toEqual([{ actividadId: 'a0-0', veces: 2 }]);
+  expect(
+    metasDeSemana(
+      { actividades: acts, revisiones },
+      '2026-10-26',
+      '2026-11-23',
+    ),
+  ).toEqual([]);
+  // Semana actual: las de hoy.
+  expect(
+    metasDeSemana(
+      { actividades: acts, revisiones },
+      '2026-11-23',
+      '2026-11-23',
+    ),
+  ).toEqual([{ actividadId: 'a0-0', veces: 5 }]);
+});
+
+test('las tarjetas cuentan días, no registros (igual que las metas)', () => {
+  const r = resumenSemana(
+    [
+      reg('a0-0', '2026-11-09'),
+      reg('a0-0', '2026-11-09'),
+      reg('a0-1', '2026-11-09'),
+    ],
+    actividades,
+    areas,
+    dias,
+  );
+  expect(r.porArea[0].veces).toBe(1); // Bienestar: un solo día
+  expect(r.porArea[0].actividades.map(a => a.veces)).toEqual([1, 1]);
 });

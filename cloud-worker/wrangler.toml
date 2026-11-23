@@ -3,6 +3,10 @@ name = "vital-cloud"
 main = "src/index.ts"
 compatibility_date = "2025-10-01"
 
+# Logs en el panel de Cloudflare: así se ve por qué falló Groq (p. ej. la revisión del 22-nov).
+[observability]
+enabled = true
+
 [[r2_buckets]]
 binding = "BUCKET"
 bucket_name = "vital"

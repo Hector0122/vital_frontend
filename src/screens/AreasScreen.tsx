@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Chip } from '../components/Chip';
 import { EditorModal, type ValoresEditor } from '../components/EditorModal';
@@ -34,8 +41,11 @@ export function AreasScreen() {
     edicion?.tipo === 'area'
       ? edicion.area ?? {
           nombre: '',
-          icono: 'leaf',
-          color: areaHues[areas.length % areaHues.length],
+          icono: 'circle-outline', // neutro: cada área elige el suyo en el editor
+          // Un color que ninguna área use; si ya están todos, se repite en orden.
+          color:
+            areaHues.find(c => !areas.some(a => a.color === c)) ??
+            areaHues[areas.length % areaHues.length],
           activo: true,
         }
       : edicion?.actividad ?? {
@@ -67,24 +77,38 @@ export function AreasScreen() {
 
   const borrar = (a: Actividad) => {
     const n = registros.filter(r => r.actividadId === a.id).length;
+    const eliminar = () => {
+      borrarActividad(a.id);
+      borrarFotosHuerfanas(fotosEnUso(useDataStore.getState().registros));
+      sincronizar();
+      setEdicion(undefined);
+    };
+    // Con historial, lo normal es ocultarla: borrar se lleva sus registros para siempre.
     Alert.alert(
       `¿Eliminar "${a.nombre}"?`,
       n
-        ? `También se borran sus ${n} registro(s). No se puede deshacer; si solo quieres ocultarla, desactívala.`
+        ? `Tiene ${n} registro(s). Si la desactivas deja de aparecer y conservas tu historial; si la eliminas, se borran también sus registros y no se puede deshacer.`
         : 'No se puede deshacer.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: () => {
-            borrarActividad(a.id);
-            borrarFotosHuerfanas(fotosEnUso(useDataStore.getState().registros));
-            sincronizar();
-            setEdicion(undefined);
-          },
-        },
-      ],
+      n
+        ? [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Desactivar',
+              onPress: () => {
+                guardarActividad({ ...a, activo: false });
+                setEdicion(undefined);
+              },
+            },
+            {
+              text: `Eliminar con ${n} registro(s)`,
+              style: 'destructive',
+              onPress: eliminar,
+            },
+          ]
+        : [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Eliminar', style: 'destructive', onPress: eliminar },
+          ],
     );
   };
 
@@ -145,7 +169,9 @@ export function AreasScreen() {
               .map(a => (
                 <Chip
                   key={a.id}
-                  label={`${a.nombre}${a.metaSemanal ? ` · ${a.metaSemanal}×` : ''}${a.activo ? '' : ' (oculta)'}`}
+                  label={`${a.nombre}${
+                    a.metaSemanal ? ` · ${a.metaSemanal}×` : ''
+                  }${a.activo ? '' : ' (oculta)'}`}
                   icono={a.icono}
                   color={area.color}
                   seleccionado={a.activo}
