@@ -213,7 +213,12 @@ export function balanceSemana(
 
   const diasAct = diasCon(registros, actual);
   const previas = [1, 2, 3, 4].map(k => diasCon(registros, semanaAtras(k)));
-  if (diasAct >= 2 && previas.every(p => diasAct > p))
+  // Sin semanas previas con algo, no hay "mejor semana" que celebrar.
+  if (
+    diasAct >= 2 &&
+    previas.every(p => diasAct > p) &&
+    previas.some(p => p > 0)
+  )
     logros.push({
       tipo: 'logro',
       texto: 'Tu semana más constante del último mes.',

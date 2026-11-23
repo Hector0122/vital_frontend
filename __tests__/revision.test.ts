@@ -32,14 +32,15 @@ test('semana a revisar: domingo desde las 18h cierra la actual; si no, la anteri
   expect(semanaARevisar(new Date(2026, 10, 16, 8))).toBe('2026-11-09'); // lunes
 });
 
-test('la entrada no lleva notas y cuenta días distintos', () => {
+test('la entrada lleva notas (no fotos) y cuenta días distintos', () => {
   const datos = datosIniciales();
   datos.registros = [
     reg('a0-0', '2026-11-09', { nota: 'secreto', sensacion: 'Cansado' }),
     reg('a0-0', '2026-11-09', { duracionMin: 30 }),
   ];
   const e = construirEntrada(datos, dias);
-  expect(JSON.stringify(e)).not.toContain('secreto');
+  expect(JSON.stringify(e)).toContain('secreto');
+  expect(JSON.stringify(e)).not.toContain('fotos');
   expect(e.actividades.find(a => a.id === 'a0-0')).toMatchObject({
     veces: 1,
     minutos: 30,
@@ -57,12 +58,14 @@ test('reglas: sube de a uno si cumplió, baja a lo logrado si no, y retoma lo de
     reg('a0-0', '2026-11-11'),
     reg('a2-0', '2026-11-10'),
   ];
-  const r = revisionPorReglas(construirEntrada(datos, dias), 'Frase.');
+  const r = revisionPorReglas(construirEntrada(datos, dias));
   expect(r.sugerencias).toEqual([
     { actividadId: 'a0-0', veces: 3, motivo: expect.any(String) },
     { actividadId: 'a2-0', veces: 1, motivo: expect.any(String) },
   ]);
-  expect(r.analisis).toMatch(/^Frase\./);
+  expect(r.secciones!.metas).toBe(
+    'Ejercicio se cumplió (2 de 2 días); Lectura quedó en 1 de 3 días.',
+  );
 });
 
 test('reglas: con cansancio no sube nada', () => {
@@ -72,7 +75,7 @@ test('reglas: con cansancio no sube nada', () => {
     reg('a0-0', '2026-11-09', { sensacion: 'Cansado' }),
     reg('a0-0', '2026-11-11', { sensacion: 'Cansado' }),
   ];
-  const r = revisionPorReglas(construirEntrada(datos, dias), '');
+  const r = revisionPorReglas(construirEntrada(datos, dias));
   expect(r.sugerencias).toEqual([
     { actividadId: 'a0-0', veces: 2, motivo: expect.any(String) },
   ]);
@@ -112,14 +115,15 @@ test('revisión pendiente: se rehace si registras algo más de esa semana', asyn
   const lunes = new Date(2026, 10, 16, 9); // revisa la semana del 9
   await generarRevisionSiFalta(lunes);
   const primera = useDataStore.getState().revisiones![0];
-  expect(primera.analisis).not.toContain('lectura');
 
   await generarRevisionSiFalta(lunes); // sin cambios: no se rehace
   expect(useDataStore.getState().revisiones![0]).toBe(primera);
 
   useDataStore.getState().agregarRegistros(['a2-0'], { fecha: '2026-11-15' }); // domingo en la noche
   await generarRevisionSiFalta(lunes);
-  expect(useDataStore.getState().revisiones![0].analisis).toContain('lectura');
+  expect(useDataStore.getState().revisiones![0].huella).not.toBe(
+    primera.huella,
+  );
 
   useDataStore.getState().aplicarRevision('2026-11-09', []);
   useDataStore.getState().agregarRegistros(['a0-0'], { fecha: '2026-11-14' });
@@ -181,4 +185,63 @@ test('rehacer: cambia solo el texto, conserva lo elegido y usa las metas de esa 
       .analisis,
   ).toBe('Texto nuevo.');
   jest.restoreAllMocks();
+});
+
+test('la entrada lleva cada registro con su nota, metas reales y semana parcial', () => {
+  const datos = datosIniciales();
+  datos.actividades.find(a => a.id === 'a0-0')!.metaSemanal = 2;
+  datos.registros = [
+    reg('a0-0', '2026-11-13', {
+      nota: '  Corrí con mi hijo  ',
+      duracionMin: 40,
+      sensacion: 'Contento',
+    }),
+    reg('a2-0', '2026-11-14'),
+  ];
+  const e = construirEntrada(datos, dias, '2026-11-16');
+  expect(e.registros).toEqual([
+    {
+      fecha: '2026-11-13',
+      dia: 'viernes',
+      actividadId: 'a0-0',
+      actividad: 'Ejercicio',
+      area: 'Bienestar',
+      minutos: 40,
+      sensacion: 'Contento',
+      nota: 'Corrí con mi hijo',
+    },
+    {
+      fecha: '2026-11-14',
+      dia: 'sábado',
+      actividadId: 'a2-0',
+      actividad: 'Lectura',
+      area: 'Crecimiento',
+    },
+  ]);
+  expect(e.metas).toEqual([
+    { actividadId: 'a0-0', nombre: 'Ejercicio', meta: 2, dias: 1 },
+  ]);
+  expect(e.diasUsandoApp).toBe(3); // empezó el viernes
+});
+
+test('sin IA: secciones con titular, nota destacada y sin lista de actividades', () => {
+  const datos = datosIniciales();
+  datos.registros = [
+    reg('a0-0', '2026-11-13', {
+      nota: 'Terminé el nivel 1 a mano',
+      sensacion: 'Contento',
+    }),
+    reg('a2-0', '2026-11-14', { sensacion: 'Contento' }),
+  ];
+  const r = revisionPorReglas(construirEntrada(datos, dias, '2026-11-16'));
+  expect(r.secciones!.titular).toBe(
+    'Empezaste a registrar a media semana: 2 días con algo para ti.',
+  );
+  expect(r.secciones!.destacado).toContain(
+    'El viernes, en ejercicio: «Terminé el nivel 1 a mano»',
+  );
+  expect(r.secciones!.sentir).toBe(
+    'Lo que más sentiste: contento (dos veces).',
+  );
+  expect(r.analisis).not.toMatch(/Registraste .* veces/);
 });

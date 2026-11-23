@@ -41,9 +41,19 @@ export interface Sugerencia {
 }
 
 /** Revisión de una semana (lunes a domingo): análisis + metas ligeras propuestas. */
+/** "Cómo te fue" por partes (v0.4); `analisis` sigue teniendo el texto completo. */
+export interface Secciones {
+  titular: string;
+  destacado: string[]; // 1–3 momentos concretos
+  metas: string;
+  sentir: string;
+  proxima: string;
+}
+
 export interface Revision {
   semana: string; // lunes 'YYYY-MM-DD'
   analisis: string;
+  secciones?: Secciones; // revisiones viejas no la traen: se muestra `analisis`
   sugerencias: Sugerencia[];
   fuente: 'ia' | 'reglas';
   estado: 'pendiente' | 'aplicada' | 'descartada';

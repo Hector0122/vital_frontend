@@ -1,4 +1,4 @@
-import { limpiarMetas, llamarGroq, type Sugerencia } from './revision'
+import { limpiarMetas, pedirAGroq, type Sugerencia } from './revision'
 
 /**
  * "Esta semana me quiero enfocar en…": Groq reacomoda las metas de la semana en
@@ -59,19 +59,19 @@ export async function enfocarConGroq(
   apiKey: string | undefined,
   modelo?: string
 ): Promise<SalidaEnfoque | null> {
-  const texto = await llamarGroq(SISTEMA, entrada, apiKey, modelo)
-  if (!texto) return null
-  try {
-    const r = JSON.parse(texto) as { mensaje?: unknown; metas?: unknown }
-    const mensaje = corto(r.mensaje, 400)
-    if (!mensaje) return null
-    // El tope de veces depende de lo que queda de la semana: el modelo no lo garantiza.
-    const metas = limpiarMetas(r.metas, entrada.actividades, 3).map((m) => {
-      const a = entrada.actividades.find((x) => x.id === m.actividadId)!
-      return { ...m, veces: Math.min(m.veces, a.vecesEstaSemana + entrada.diasRestantes) }
-    })
-    return { mensaje, metas }
-  } catch {
-    return null
-  }
+  return pedirAGroq(SISTEMA, entrada, apiKey, modelo, (texto) => {
+    try {
+      const r = JSON.parse(texto) as { mensaje?: unknown; metas?: unknown }
+      const mensaje = corto(r.mensaje, 400)
+      if (!mensaje) return null
+      // El tope de veces depende de lo que queda de la semana: el modelo no lo garantiza.
+      const metas = limpiarMetas(r.metas, entrada.actividades, 3).map((m) => {
+        const a = entrada.actividades.find((x) => x.id === m.actividadId)!
+        return { ...m, veces: Math.min(m.veces, a.vecesEstaSemana + entrada.diasRestantes) }
+      })
+      return { mensaje, metas }
+    } catch {
+      return null
+    }
+  })
 }

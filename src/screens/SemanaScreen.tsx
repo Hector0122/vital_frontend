@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { CuerpoRevision } from '../components/CuerpoRevision';
 import { Destacados } from '../components/Destacados';
 import { MesView } from '../components/MesView';
 import { Recuerdos } from '../components/Recuerdos';
@@ -283,7 +284,7 @@ export function SemanaScreen({ navigation }: Props) {
                     </Pressable>
                   )}
                 </View>
-                <Text style={styles.body}>{revision.analisis}</Text>
+                <CuerpoRevision revision={revision} />
                 {revision.aceptadas?.length ? (
                   <Text style={styles.muted}>
                     Metas para la siguiente semana:{' '}

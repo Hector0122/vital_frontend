@@ -6,6 +6,7 @@ import { useDataStore, type Revision } from '../stores/dataStore';
 import { colors, iconSize, radius, spacing, type } from '../theme';
 import { diasDeSemana, parseIso } from '../utils/fechas';
 import { Button } from './Button';
+import { CuerpoRevision } from './CuerpoRevision';
 import { MetasPropuestas } from './MetasPropuestas';
 
 const corta = (f: string) =>
@@ -24,7 +25,7 @@ export function RevisionCard({ revision }: { revision: Revision }) {
           Cómo te fue · {corta(dias[0])} – {corta(dias[6])}
         </Text>
       </View>
-      <Text style={styles.analisis}>{revision.analisis}</Text>
+      <CuerpoRevision revision={revision} />
 
       {revision.sugerencias.length ? (
         <>
@@ -63,7 +64,6 @@ const styles = StyleSheet.create({
   },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   titulo: { ...type.label, color: colors.primary, textTransform: 'uppercase' },
-  analisis: { ...type.body, color: colors.text },
   label: {
     ...type.label,
     color: colors.muted,

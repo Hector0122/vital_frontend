@@ -85,3 +85,64 @@ describe('POST /revision', () => {
     expect((await post({ nada: 1 })).status).toBe(400)
   })
 })
+
+describe('v0.4: notas, metas reales y secciones', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  const env = { API_TOKEN: 't', GROQ_API_KEY: 'g' } as unknown as Env
+  const rica = {
+    ...entrada,
+    registros: [
+      { fecha: '2026-11-14', dia: 'sábado', actividadId: 'a0-0', actividad: 'Ejercicio', area: 'Bienestar', minutos: 60, sensacion: 'Con energía', nota: 'x'.repeat(500) },
+      { fecha: 'mal', actividadId: 'a0-0', actividad: 'Ejercicio' } // se ignora, no tumba nada
+    ],
+    metas: [{ actividadId: 'a0-0', nombre: 'Ejercicio', meta: 2, dias: 3 }],
+    diasUsandoApp: 3,
+    logros: ['Llevas 2 semanas seguidas cuidándote.']
+  }
+  const secciones = {
+    titular: 'Semana con energía.',
+    destacado: ['El sábado, una hora de ejercicio.'],
+    metas: 'Ejercicio se cumplió, 3 días contra 2.',
+    sentir: '',
+    proxima: 'Mantener 2 días. Veamos cómo nos va.',
+    sugerencias: [{ actividadId: 'a0-0', veces: 3, motivo: 'Vas bien' }]
+  }
+  const post = (body: unknown) =>
+    worker.fetch(
+      new Request('https://w.dev/revision', { method: 'POST', headers: { Authorization: 'Bearer t' }, body: JSON.stringify(body) }) as never,
+      env
+    )
+
+  it('valida lo nuevo: recorta notas e ignora registros rotos', () => {
+    const v = validarEntrada(rica)!
+    expect(v.registros).toHaveLength(1)
+    expect(v.registros![0].nota).toHaveLength(300)
+    expect(v.metas).toEqual(rica.metas)
+    expect(v.diasUsandoApp).toBe(3)
+    expect(v.logros).toEqual(rica.logros)
+  })
+
+  it('devuelve secciones y un análisis completo para versiones viejas', async () => {
+    const fetchMock = vi.fn(async () => Response.json({ choices: [{ message: { content: JSON.stringify(secciones) } }] }))
+    vi.stubGlobal('fetch', fetchMock)
+    const r = (await (await post(rica)).json()) as { analisis: string; secciones: unknown; sugerencias: unknown[] }
+    expect(r.secciones).toMatchObject({ titular: 'Semana con energía.', sentir: '' })
+    expect(r.analisis).toBe(
+      'Semana con energía.\n\nEl sábado, una hora de ejercicio.\n\nEjercicio se cumplió, 3 días contra 2.\n\nMantener 2 días. Veamos cómo nos va.'
+    )
+    expect(r.sugerencias).toHaveLength(1)
+    const body = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)
+    expect(body).toMatchObject({ reasoning_effort: 'low', max_completion_tokens: 4000, response_format: { type: 'json_schema' } })
+  })
+
+  it('si el modelo principal falla, reintenta con el de respaldo', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ choices: [{ message: { content: '' } }] })) // se quedó sin tokens
+      .mockResolvedValueOnce(Response.json({ choices: [{ message: { content: JSON.stringify(secciones) } }] }))
+    vi.stubGlobal('fetch', fetchMock)
+    expect((await post(rica)).status).toBe(200)
+    const modelos = fetchMock.mock.calls.map((c) => JSON.parse((c[1] as RequestInit).body as string).model)
+    expect(modelos).toEqual(['openai/gpt-oss-120b', 'llama-3.3-70b-versatile'])
+  })
+})
